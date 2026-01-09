@@ -1,0 +1,57 @@
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Logs
+logs/
+*.log
+
+# Credentials & Sensitive Data
+*_credentials.json
+*.json
+!requirements.json
+
+# Environment variables
+.env
+.env.*
+!.env.template
+
+# Test Artifacts
+.helper_artifacts/
+!.helper_artifacts/
+.helper_artifacts/*
+!.helper_artifacts/.gitkeep
+tests/
+
+# Report Compiler Data
+0. Report Compiler/Input/
+0. Report Compiler/Output/
+
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+
+# Edge → Yardi: do not ignore anything in this workflow folder
+!09. Edge to Yardi/**

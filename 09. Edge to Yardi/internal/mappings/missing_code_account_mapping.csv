@@ -1,0 +1,11 @@
+category,subcategory,description,yardi_account
+Expense,Bad Debt Expense,Bad Debt Write-Off,4710-0006
+Expense,Bad Debt Expense,Bad Debt Write-Off - Rental,4710-0006
+Expense,Bad Debt Expense,Bad Debt Write-Off - Rental Income,4710-0006
+Expense,Waive Expense,Waive Expense - Fees,4710-0006
+Income,Fee Income,Convenience Fee Revenue,5000-0013
+Income,Fee Income,Fee Revenue Other,5700-0000
+Income,Retail Income,General Retail Revenue 5000-001,5000-0001
+Income,Retail Income,Locks Revenue 5000-001,5000-0001
+Income,Sales Discounts,Discount Expense,4710-0007
+Income,Sales Discounts,Discount Expense - Rental Income,4710-0007

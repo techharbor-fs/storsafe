@@ -1,0 +1,41 @@
+Account_Number,Account_Name,Property_Code,Account_Base_Name,Account_Sub_Detail,Total_Balance,Is_Accumulated,Target_Account_Name,Target_Account_Code,Action,Notes
+1100-0001,Cash Reserve,nan,Cash Reserve,nan,1661192.28,False,Corporate Cash Reserve,CR,keep,Cash reserve account
+1110-1003,5301 Dempster FNBC Checking,5301,Dempster FNBC Checking,nan,-43216.08,False,5301 Operating Cash,5301_OP_CASH,merge,Merge into 5301 Operating Cash
+1110-1516,EP SEF III PV,nan,EP SEF III PV,nan,-1219205.3,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-1523,1307 Amalgamated Checking,1307,Amalgamated Checking,nan,-40.0,False,1307 Operating Cash,1307_OP_CASH,merge,Merge into 1307 Operating Cash
+1110-1524,1288 Old National Bank,1288,Old National Bank,nan,228565.24,False,1288 Operating Cash,1288_OP_CASH,merge,Merge into 1288 Operating Cash
+1110-1526,1288 Reserve Old National Bank,1288,Reserve,Old National Bank,2.0,False,1288 Cash Reserve,1288_CR,keep,Reserve account for 1288
+1110-1528,EP CPSS PROVIDENCE,nan,EP CPSS PROVIDENCE,nan,-11539.96,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-1534,314 WIP FBHP,314,WIP,FBHP,32139.78,False,314 Operating Cash,314_OP_CASH,keep,Operating cash for property 314
+1110-1553,2201 Amal Checking,2201,Amal Checking,nan,111034.58,False,2201 Operating Cash,2201_OP_CASH,keep,Operating cash for property 2201
+1110-1555,2201Chase,2201,Chase,nan,10993.86,False,2201 Operating Cash,2201_OP_CASH,merge,Merge into 2201 Operating Cash
+1110-1669,5301 Dempster Amal Checking,5301,Dempster Amal Checking,nan,3358.8,False,5301 Operating Cash,5301_OP_CASH,merge,Merge into 5301 Operating Cash
+1110-2469,1401 Plaza Verde Amalgamated Checking,1401,Plaza Verde Amalgamated Checking,nan,149684.14,False,1401 Operating Cash,1401_OP_CASH,keep,Operating cash for property 1401
+1110-4328,EP HSS FBHP,nan,EP HSS,FBHP,-46765.9,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4329,EP HSS Chase,nan,EP HSS,Chase,-172039.38,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4700,4700 Racine FBHP,4700,Racine,FBHP,50130.08,False,4700 Operating Cash,4700_OP_CASH,keep,Operating cash for property 4700
+1110-4901,EP HSS 2 Chase,nan,EP HSS 2,Chase,-19024.2,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4909,EP MSS 1st Merchants,nan,EP MSS 1st Merchants,nan,57617.96,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4918,SS Palm Shores Chase,nan,SS Palm Shores,Chase,-2112.94,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4923,SS Venice Amalgamated,nan,SS Venice Amalgamated,nan,-29999.32,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4924,SS Venice Chase,nan,SS Venice,Chase,-10373.36,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4926,SS of Munster Amalgamated,nan,SS of Munster Amalgamated,nan,-58373.68,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4927,SS of Munster Chase,nan,SS of Munster,Chase,-7715.12,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4938,SS of MI City Chase,nan,SS of MI City,Chase,-12208.18,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4939,SS of Silver Springs Chase,nan,SS of Silver Springs,Chase,-2149.1,False,Corporate Operating Cash,COC,merge,Merge into Corporate Operating Cash
+1110-4940,SS DRE JV MetCap,nan,SS DRE JV,MetCap,4889.18,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4942,SS of MI City Amalgamated,nan,SS of MI City Amalgamated,nan,163.08,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4943,Rockledge Key Bank,nan,Rockledge,Key Bank,225364.68,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4944,Palm Bay Key Bank,nan,Palm Bay,Key Bank,-16804.6,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4946,Silver Springs Equitable Bank,nan,Silver Springs,Equitable Bank,124.0,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4947,Crown Point West Chase,nan,Crown Point West,Chase,20314.52,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4948,Merrillville South Chase,nan,Merrillville South,Chase,-39625.26,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4949,SS of Palm Bay Busey Bank,nan,SS of Palm Bay,Busey Bank,1202.5,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4951,MSS Chase,nan,MSS,Chase,1264.28,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4952,CPSS Chase,nan,CPSS,Chase,-5737.56,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4954,SSWwd Chase,nan,SSWwd,Chase,-25406.0,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4955,SSWwd Busey,nan,SSWwd,Busey,172208.88,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4957,Crown Point West Centier Operating,nan,Crown Point West,Centier Operating,-49026.86,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4958,Rockledge Centier Money Market,nan,Rockledge,Centier Money Market,20086.72,False,Corporate Money Market,CMM,keep,Money market account
+1110-4959,MSSSouth Amal,nan,MSSSouth Amal,nan,27803.14,False,Corporate Operating Cash,COC,keep,General operating cash account
+1110-4960,Candler Chase,nan,Candler,Chase,-237.88,False,Corporate Operating Cash,COC,keep,General operating cash account
