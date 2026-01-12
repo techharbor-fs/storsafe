@@ -143,57 +143,31 @@ def load_account_code_mapping(mapping_path: Path) -> dict[str, str]:
     return mapping
 
 
-def load_property_cash_account_mapping(mapping_path: Path) -> dict[str, dict[str, str]]:
+def load_cash_account_mappings(json_path: Path) -> dict[str, dict[str, str]]:
     """Load property-specific cash account codes from JSON.
     
     Maps property_code -> {description: yardi_code}
     This allows different cash types (ACH, Credit Card, etc.) to have different accounts.
     
+    Source: Google Sheet fetched by fetch_cash_account_mappings.py
+    
     Expected JSON format:
     {
         "ephss": {
-            "Cash": "1110-4977",
+            "Cash": "1110-4329",
             "Credit Card - Visa": "1110-4977",
             ...
         },
         ...
     }
     """
-    # Try JSON file first (new format)
-    json_path = mapping_path.parent / "cash_account_mappings.json"
-    if json_path.exists():
-        with json_path.open("r", encoding="utf-8") as f:
-            mapping = json.load(f)
-        debug_print(f"Loaded {len(mapping)} property cash account mappings from JSON")
-        return mapping
-    
-    # Fall back to CSV (old format - single code per property)
-    if not mapping_path.exists():
-        debug_print(f"Property cash account mapping not found: {mapping_path}")
+    if not json_path.exists():
+        debug_print(f"Cash account mappings not found: {json_path}")
         return {}
     
-    mapping: dict[str, dict[str, str]] = {}
-    with mapping_path.open("r", newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            prop_code = (row.get("property_code") or "").strip().lower()
-            cash_code = (row.get("correct_cash_account") or "").strip()
-            if prop_code and cash_code:
-                # Old format: apply same code to all cash descriptions
-                mapping[prop_code] = {
-                    "Cash": cash_code,
-                    "Checks": cash_code,
-                    "ACH": cash_code,
-                    "Money Order": cash_code,
-                    "Credit Card - Visa": cash_code,
-                    "Credit Card - Master Card": cash_code,
-                    "Credit Card - American Express": cash_code,
-                    "Credit Card - Discover": cash_code,
-                    "Credit Card - Other": cash_code,
-                    "Refund Checks": cash_code,
-                }
-    
-    debug_print(f"Loaded {len(mapping)} property cash account mappings from CSV (legacy)")
+    with json_path.open("r", encoding="utf-8") as f:
+        mapping = json.load(f)
+    debug_print(f"Loaded {len(mapping)} property cash account mappings")
     return mapping
 
 
@@ -511,9 +485,9 @@ def run_transform_workflow(
     if account_corrections:
         print(f"Loaded {len(account_corrections)} account code corrections")
     
-    # Load property-specific cash account mapping
-    cash_mapping_path = month_dir / "Input" / "property_cash_account_mapping.csv"
-    cash_account_mapping = load_property_cash_account_mapping(cash_mapping_path)
+    # Load property-specific cash account mapping (from Google Sheet)
+    cash_mapping_path = month_dir / "Input" / "cash_account_mappings.json"
+    cash_account_mapping = load_cash_account_mappings(cash_mapping_path)
     if cash_account_mapping:
         print(f"Loaded {len(cash_account_mapping)} property cash account mappings")
     
