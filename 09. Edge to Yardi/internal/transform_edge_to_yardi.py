@@ -127,7 +127,7 @@ def load_account_code_mapping(mapping_path: Path) -> dict[str, str]:
     Maps Description -> Yardi Code
     """
     if not mapping_path.exists():
-        print(f"  ⚠️ Account code mapping not found: {mapping_path}")
+        print(f"  [WARN] Account code mapping not found: {mapping_path}")
         return {}
     
     mapping: dict[str, str] = {}
@@ -143,26 +143,57 @@ def load_account_code_mapping(mapping_path: Path) -> dict[str, str]:
     return mapping
 
 
-def load_property_cash_account_mapping(mapping_path: Path) -> dict[str, str]:
-    """Load property-specific cash account codes from CSV.
+def load_property_cash_account_mapping(mapping_path: Path) -> dict[str, dict[str, str]]:
+    """Load property-specific cash account codes from JSON.
     
-    Maps property_code -> correct_cash_account
-    This corrects cases where Edge exports use wrong cash account codes.
+    Maps property_code -> {description: yardi_code}
+    This allows different cash types (ACH, Credit Card, etc.) to have different accounts.
+    
+    Expected JSON format:
+    {
+        "ephss": {
+            "Cash": "1110-4977",
+            "Credit Card - Visa": "1110-4977",
+            ...
+        },
+        ...
+    }
     """
+    # Try JSON file first (new format)
+    json_path = mapping_path.parent / "cash_account_mappings.json"
+    if json_path.exists():
+        with json_path.open("r", encoding="utf-8") as f:
+            mapping = json.load(f)
+        debug_print(f"Loaded {len(mapping)} property cash account mappings from JSON")
+        return mapping
+    
+    # Fall back to CSV (old format - single code per property)
     if not mapping_path.exists():
         debug_print(f"Property cash account mapping not found: {mapping_path}")
         return {}
     
-    mapping: dict[str, str] = {}
+    mapping: dict[str, dict[str, str]] = {}
     with mapping_path.open("r", newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for row in reader:
             prop_code = (row.get("property_code") or "").strip().lower()
             cash_code = (row.get("correct_cash_account") or "").strip()
             if prop_code and cash_code:
-                mapping[prop_code] = cash_code
+                # Old format: apply same code to all cash descriptions
+                mapping[prop_code] = {
+                    "Cash": cash_code,
+                    "Checks": cash_code,
+                    "ACH": cash_code,
+                    "Money Order": cash_code,
+                    "Credit Card - Visa": cash_code,
+                    "Credit Card - Master Card": cash_code,
+                    "Credit Card - American Express": cash_code,
+                    "Credit Card - Discover": cash_code,
+                    "Credit Card - Other": cash_code,
+                    "Refund Checks": cash_code,
+                }
     
-    debug_print(f"Loaded {len(mapping)} property cash account mappings")
+    debug_print(f"Loaded {len(mapping)} property cash account mappings from CSV (legacy)")
     return mapping
 
 
@@ -194,7 +225,7 @@ def is_cash_description(description: str) -> bool:
 def load_facility_assignees() -> dict[str, str]:
     """Load property_code -> assignee mapping from facility_order.json."""
     if not FACILITY_ORDER_PATH.exists():
-        print(f"  ⚠️ Facility order not found: {FACILITY_ORDER_PATH}")
+        print(f"  [WARN] Facility order not found: {FACILITY_ORDER_PATH}")
         return {}
     
     with FACILITY_ORDER_PATH.open("r", encoding="utf-8") as f:
@@ -215,15 +246,59 @@ def load_facility_assignees() -> dict[str, str]:
 # CASH ACCOUNT CORRECTION (FINAL STEP)
 # ============================================================================
 
+def _normalize_cash_description(description: str) -> str:
+    """Normalize cash description for lookup in mapping.
+    
+    Handles variations like 'Credit Card - Mastercard' vs 'Credit Card - Master Card'.
+    """
+    desc = description.strip()
+    desc_lower = desc.lower()
+    
+    # Normalize MasterCard variations
+    if "mastercard" in desc_lower or "master card" in desc_lower:
+        return "Credit Card - Master Card"
+    
+    # Normalize other credit card types
+    if "credit card" in desc_lower:
+        if "visa" in desc_lower:
+            return "Credit Card - Visa"
+        if "discover" in desc_lower:
+            return "Credit Card - Discover"
+        if "american express" in desc_lower or "amex" in desc_lower:
+            return "Credit Card - American Express"
+        if "other" in desc_lower:
+            return "Credit Card - Other"
+    
+    # Normalize other cash types
+    if desc_lower == "cash":
+        return "Cash"
+    if desc_lower == "checks":
+        return "Checks"
+    if desc_lower == "ach":
+        return "ACH"
+    if desc_lower == "money order":
+        return "Money Order"
+    if "refund check" in desc_lower:
+        return "Refund Checks"
+    
+    # Return as-is if no normalization needed
+    return desc
+
+
 def apply_cash_account_corrections(
     csv_path: Path,
     property_code: str,
-    cash_account_code: str,
+    cash_description_mapping: dict[str, str],
 ) -> list[CashCodeCorrection]:
-    """Apply property-specific cash account code corrections.
+    """Apply property-specific cash account code corrections based on description.
     
     This is the FINAL transformation step that fixes incorrect cash account codes
     that appear in Edge exports. Modifies the CSV file in place.
+    
+    Args:
+        csv_path: Path to the CSV file to modify
+        property_code: The property code (for logging)
+        cash_description_mapping: Dict mapping description -> correct yardi code
     
     Returns list of corrections made.
     """
@@ -242,14 +317,20 @@ def apply_cash_account_corrections(
         current_code = row[COL_ACCOUNT_CODE].strip()
         description = row[COL_DESCRIPTION].strip() if len(row) > COL_DESCRIPTION else ""
         
-        # Only correct if:
-        # 1. Description indicates it's a cash transaction
-        # 2. Current code is different from the correct code
-        # 3. Current code starts with 11 (cash/bank accounts)
-        if (is_cash_description(description) and 
-            current_code != cash_account_code and
-            current_code.startswith("11")):
-            
+        # Skip if not a cash transaction or doesn't start with 11
+        if not is_cash_description(description) or not current_code.startswith("11"):
+            continue
+        
+        # Normalize description and look up the correct code
+        normalized_desc = _normalize_cash_description(description)
+        correct_code = cash_description_mapping.get(normalized_desc)
+        
+        if not correct_code:
+            debug_print(f"No mapping found for description: {description} (normalized: {normalized_desc})")
+            continue
+        
+        # Only correct if the current code is different
+        if current_code != correct_code:
             # Extract transaction date (column E, index 4)
             date_str = row[4] if len(row) > 4 else ""
             amount = row[COL_AMOUNT] if len(row) > COL_AMOUNT else ""
@@ -258,14 +339,14 @@ def apply_cash_account_corrections(
                 property_code=property_code,
                 date=date_str,
                 original_code=current_code,
-                corrected_code=cash_account_code,
+                corrected_code=correct_code,
                 description=description,
                 amount=amount,
             ))
             
             # Apply correction
-            row[COL_ACCOUNT_CODE] = cash_account_code
-            debug_print(f"Cash correction: {current_code} -> {cash_account_code} for {description}")
+            row[COL_ACCOUNT_CODE] = correct_code
+            debug_print(f"Cash correction: {current_code} -> {correct_code} for {description}")
     
     # Write corrected CSV
     if corrections:
@@ -453,14 +534,12 @@ def run_transform_workflow(
     
     # Transform each file
     print("\n=== Transforming files ===")
-    all_transformed_rows: list[list[str]] = []
-    jay_transformed_rows: list[list[str]] = []
     all_unmapped: set[str] = set()
     
     for i, source_path in enumerate(source_files, 1):
         property_code = extract_property_code_from_filename(source_path.name)
         if not property_code:
-            print(f"[{i}/{len(source_files)}] ⚠️ Could not extract property code from: {source_path.name}")
+            print(f"[{i}/{len(source_files)}] [WARN] Could not extract property code from: {source_path.name}")
             continue
         
         output_filename = f"yardi_import__{property_code}__{report_month}.csv"
@@ -478,11 +557,11 @@ def run_transform_workflow(
         
         # Apply cash account corrections (FINAL STEP)
         if result.status == "success" and property_code.lower() in cash_account_mapping:
-            cash_code = cash_account_mapping[property_code.lower()]
+            cash_description_mapping = cash_account_mapping[property_code.lower()]
             cash_corrections = apply_cash_account_corrections(
                 csv_path=output_path,
                 property_code=property_code,
-                cash_account_code=cash_code,
+                cash_description_mapping=cash_description_mapping,
             )
             result.cash_codes_fixed = len(cash_corrections)
             report.all_cash_corrections.extend(cash_corrections)
@@ -495,20 +574,10 @@ def run_transform_workflow(
             report.total_rows += result.row_count
             report.total_codes_fixed += result.codes_fixed
             
-            # Add to compiled output
-            with output_path.open("r", newline="", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                rows = list(reader)
-                all_transformed_rows.extend(rows)
-                
-                # Check if this facility is assigned to Jay
-                if property_code.lower() in jay_facilities:
-                    jay_transformed_rows.extend(rows)
-            
             if result.unmapped_descriptions:
                 all_unmapped.update(result.unmapped_descriptions)
             
-            status_msg = f"  ✓ {result.row_count} rows"
+            status_msg = f"  [OK] {result.row_count} rows"
             if result.codes_fixed > 0:
                 status_msg += f", {result.codes_fixed} codes fixed"
             if result.cash_codes_fixed > 0:
@@ -518,28 +587,16 @@ def run_transform_workflow(
             print(status_msg)
         else:
             report.error_count += 1
-            print(f"  ✗ Error: {result.error_message}")
+            print(f"  [ERR] Error: {result.error_message}")
     
-    # Write compiled CSVs
-    print("\n=== Generating compiled files ===")
+    # =========================================================================
+    # COMPILE FILES BY READING FROM DISK (ensures consistency)
+    # =========================================================================
+    # Instead of building compiled files from in-memory data, we read from the
+    # individual files on disk. This guarantees the compiled file matches the
+    # individual files exactly.
     
-    # All facilities combined
-    compiled_path = output_dir / f"yardi_import_compiled__{report_month}.csv"
-    with compiled_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerows(all_transformed_rows)
-    report.compiled_file = str(compiled_path)
-    print(f"  ✓ Compiled all: {compiled_path.name} ({len(all_transformed_rows)} rows)")
-    
-    # Jay-only facilities
-    jay_path = output_dir / f"yardi_import_Jay__{report_month}.csv"
-    with jay_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerows(jay_transformed_rows)
-    report.jay_file = str(jay_path)
-    print(f"  ✓ Jay combined: {jay_path.name} ({len(jay_transformed_rows)} rows)")
-    
-    # Individual Jay property files (new requirement)
+    # Copy individual Jay property files to Output/ first
     print("\n=== Generating individual Jay property files ===")
     for prop_code in sorted(jay_facilities):
         prop_file = import_template_dir / f"yardi_import__{prop_code}__{report_month}.csv"
@@ -551,7 +608,40 @@ def run_transform_workflow(
             with individual_path.open("w", newline="", encoding="utf-8") as f:
                 csv.writer(f).writerows(rows)
             report.jay_property_files.append(str(individual_path))
-            print(f"  ✓ {prop_code}: {individual_path.name} ({len(rows)} rows)")
+            print(f"  [OK] {prop_code}: {individual_path.name} ({len(rows)} rows)")
+    
+    # Build compiled files by reading from individual files on disk
+    print("\n=== Generating compiled files (from individual files) ===")
+    
+    # All facilities combined - read from import_template/
+    all_transformed_rows = []
+    for source_path in sorted(import_template_dir.glob(f"yardi_import__*__{report_month}.csv")):
+        with source_path.open("r", newline="", encoding="utf-8-sig") as f:
+            rows = list(csv.reader(f))
+            all_transformed_rows.extend(rows)
+    
+    compiled_path = output_dir / f"yardi_import_compiled__{report_month}.csv"
+    with compiled_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(all_transformed_rows)
+    report.compiled_file = str(compiled_path)
+    print(f"  [OK] Compiled all: {compiled_path.name} ({len(all_transformed_rows)} rows)")
+    
+    # Jay-only facilities - read from Output/ (the files we just copied)
+    jay_transformed_rows = []
+    for prop_code in sorted(jay_facilities):
+        jay_file = output_dir / f"yardi_import__{prop_code}__{report_month}.csv"
+        if jay_file.exists():
+            with jay_file.open("r", newline="", encoding="utf-8-sig") as f:
+                rows = list(csv.reader(f))
+                jay_transformed_rows.extend(rows)
+    
+    jay_path = output_dir / f"yardi_import_Jay__{report_month}.csv"
+    with jay_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(jay_transformed_rows)
+    report.jay_file = str(jay_path)
+    print(f"  [OK] Jay combined: {jay_path.name} ({len(jay_transformed_rows)} rows)")
     
     # Generate cash corrections report
     if report.all_cash_corrections:
@@ -577,7 +667,7 @@ def run_transform_workflow(
                     "amount": corr.amount,
                 })
         report.cash_corrections_file = str(corrections_path)
-        print(f"  ✓ Cash corrections report: {corrections_path.name} ({len(report.all_cash_corrections)} corrections)")
+        print(f"  [OK] Cash corrections report: {corrections_path.name} ({len(report.all_cash_corrections)} corrections)")
     
     # Report unmapped descriptions
     report.all_unmapped_descriptions = sorted(all_unmapped)

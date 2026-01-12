@@ -1,144 +1,45 @@
 property_code,date,original_code,corrected_code,description,amount
-cpwest,12/08/2025,1110-4957,1110-4947,Credit Card - Visa,362.00
-cpwest,12/09/2025,1110-4957,1110-4947,Credit Card - Master Card,374.68
-cpwest,12/09/2025,1110-4957,1110-4947,Credit Card - Visa,534.50
-cpwest,12/10/2025,1110-4957,1110-4947,Credit Card - Discover,50.39
-cpwest,12/10/2025,1110-4957,1110-4947,Credit Card - Visa,197.00
-cpwest,12/11/2025,1110-4957,1110-4947,Credit Card - Visa,724.00
-cpwest,12/12/2025,1110-4957,1110-4947,Credit Card - Visa,235.00
-cpwest,12/14/2025,1110-4957,1110-4947,Credit Card - Visa,73.00
-cpwest,12/15/2025,1110-4957,1110-4947,Credit Card - Master Card,99.74
-cpwest,12/15/2025,1110-4957,1110-4947,Credit Card - Visa,878.00
-cpwest,12/16/2025,1110-4957,1110-4947,Credit Card - Visa,194.63
-cpwest,12/20/2025,1110-4957,1110-4947,Credit Card - Discover,42.00
-cpwest,12/20/2025,1110-4957,1110-4947,Credit Card - Visa,198.00
-cpwest,12/21/2025,1110-4957,1110-4947,Credit Card - Discover,4.26
-cpwest,12/21/2025,1110-4957,1110-4947,Credit Card - Master Card,449.00
-cpwest,12/22/2025,1110-4957,1110-4947,Credit Card - Visa,106.00
-cpwest,12/23/2025,1110-4957,1110-4947,Credit Card - Visa,786.00
-cpwest,12/24/2025,1110-4957,1110-4947,Credit Card - Visa,145.00
-cpwest,12/26/2025,1110-4957,1110-4947,Credit Card - Master Card,174.00
-cpwest,12/27/2025,1110-4957,1110-4947,Credit Card - Master Card,190.54
-cpwest,12/28/2025,1110-4957,1110-4947,Credit Card - Master Card,335.00
-cpwest,12/29/2025,1110-4957,1110-4947,Credit Card - Discover,109.00
-cpwest,12/29/2025,1110-4957,1110-4947,Credit Card - Master Card,166.00
-cpwest,12/29/2025,1110-4957,1110-4947,Credit Card - Visa,320.55
-cpwest,12/30/2025,1110-4957,1110-4947,Credit Card - Master Card,135.00
-cpwest,12/30/2025,1110-4957,1110-4947,Credit Card - Visa,340.76
-cpwest,12/31/2025,1110-4957,1110-4947,Credit Card - Discover,56.13
-cpwest,12/31/2025,1110-4957,1110-4947,Credit Card - Master Card,513.00
-cpwest,12/31/2025,1110-4957,1110-4947,Credit Card - Visa,952.13
-epcpss,12/08/2025,1110-1528,1100-0001,ACH,218.32
-epcpss,12/08/2025,1110-1528,1100-0001,Credit Card - Master Card,109.50
-epcpss,12/08/2025,1110-1528,1100-0001,Credit Card - Visa,25.00
-epcpss,12/09/2025,1110-1528,1100-0001,Credit Card - Master Card,66.00
-epcpss,12/09/2025,1110-1528,1100-0001,Credit Card - Visa,281.00
-epcpss,12/10/2025,1110-1528,1100-0001,Credit Card - Master Card,168.00
-epcpss,12/10/2025,1110-1528,1100-0001,Credit Card - Visa,32.65
-epcpss,12/12/2025,1110-1528,1100-0001,Credit Card - Visa,483.00
-epcpss,12/13/2025,1110-1528,1100-0001,Credit Card - Discover,186.00
-epcpss,12/13/2025,1110-1528,1100-0001,Credit Card - Visa,417.00
-epcpss,12/15/2025,1110-1528,1100-0001,Credit Card - Visa,2693.60
-epcpss,12/16/2025,1110-1528,1100-0001,Credit Card - Visa,186.00
-epcpss,12/17/2025,1110-4952,1100-0001,Credit Card - Discover,182.00
-epcpss,12/19/2025,1110-4952,1100-0001,Credit Card - American Express,46.00
-epcpss,12/19/2025,1110-4952,1100-0001,Credit Card - Visa,474.00
-epcpss,12/20/2025,1110-4952,1100-0001,Credit Card - Visa,548.00
-epcpss,12/21/2025,1110-4952,1100-0001,Credit Card - Visa,216.00
-epcpss,12/25/2025,1110-4952,1100-0001,Credit Card - Visa,210.00
-epcpss,12/26/2025,1110-4952,1100-0001,Credit Card - Master Card,326.00
-epcpss,12/26/2025,1110-4952,1100-0001,Credit Card - Visa,468.00
-epcpss,12/27/2025,1110-4952,1100-0001,Credit Card - Visa,647.00
-epcpss,12/29/2025,1110-4952,1100-0001,Credit Card - Master Card,32.77
-epcpss,12/29/2025,1110-4952,1100-0001,Credit Card - Visa,729.00
-epcpss,12/30/2025,1110-4952,1100-0001,Credit Card - Master Card,460.00
-epcpss,12/31/2025,1110-4952,1100-0001,Credit Card - Master Card,549.00
-epcpss,12/31/2025,1110-4952,1100-0001,Credit Card - Visa,555.00
-ephss2,12/10/2025,1110-1532,1110-4329,ACH,79.28
-ephss2,12/10/2025,1110-1532,1110-4329,Credit Card - Master Card,510.00
-ephss2,12/11/2025,1110-1532,1110-4329,Credit Card - Visa,1608.00
-ephss2,12/12/2025,1110-1532,1110-4329,Credit Card - Visa,55.84
-ephss2,12/13/2025,1110-4948,1110-4329,Credit Card - Master Card,379.00
-ephss2,12/14/2025,1110-4948,1110-4329,Credit Card - Discover,132.02
-ephss2,12/14/2025,1110-4948,1110-4329,Credit Card - Master Card,191.83
-ephss2,12/14/2025,1110-4948,1110-4329,Credit Card - Visa,532.00
-ephss2,12/15/2025,1110-4948,1110-4329,Credit Card - Visa,292.34
-ephss2,12/16/2025,1110-4948,1110-4329,Credit Card - Visa,258.00
-ephss2,12/17/2025,1110-4948,1110-4329,Credit Card - Visa,221.28
-ephss2,12/18/2025,1110-4948,1110-4329,Credit Card - Master Card,136.40
-ephss2,12/20/2025,1110-4948,1110-4329,Credit Card - Discover,72.99
-ephss2,12/20/2025,1110-4948,1110-4329,Credit Card - Visa,226.00
-ephss2,12/21/2025,1110-4948,1110-4329,Credit Card - Visa,208.20
-ephss2,12/22/2025,1110-4948,1110-4329,Credit Card - Master Card,35.00
-ephss2,12/24/2025,1110-4948,1110-4329,Credit Card - Master Card,196.21
-ephss2,12/24/2025,1110-4948,1110-4329,Credit Card - Visa,51.99
-ephss2,12/25/2025,1110-4948,1110-4329,Credit Card - Master Card,80.00
-ephss2,12/26/2025,1110-4948,1110-4329,Credit Card - Master Card,150.00
-ephss2,12/26/2025,1110-4948,1110-4329,Credit Card - Visa,41.84
-ephss2,12/27/2025,1110-4948,1110-4329,Credit Card - Discover,59.07
-ephss2,12/27/2025,1110-4948,1110-4329,Credit Card - Visa,39.00
-ephss2,12/28/2025,1110-4948,1110-4329,Credit Card - Master Card,40.00
-ephss2,12/29/2025,1110-4948,1110-4329,ACH,53.00
-ephss2,12/29/2025,1110-4948,1110-4329,Credit Card - Master Card,130.00
-ephss2,12/29/2025,1110-4948,1110-4329,Credit Card - Visa,522.37
-ephss2,12/30/2025,1110-4948,1110-4329,Credit Card - Master Card,89.00
-ephss2,12/30/2025,1110-4948,1110-4329,Credit Card - Visa,422.00
-ephss2,12/31/2025,1110-4948,1110-4329,ACH,128.28
-ephss2,12/31/2025,1110-4948,1110-4329,Credit Card - Master Card,160.00
-ephss2,12/31/2025,1110-4948,1110-4329,Credit Card - Visa,70.39
-ephss,12/09/2025,1110-4977,1110-4328,Credit Card - Master Card,207.00
-ephss,12/10/2025,1110-4977,1110-4328,Credit Card - Discover,43.00
-ephss,12/10/2025,1110-4977,1110-4328,Credit Card - Visa,668.50
-ephss,12/11/2025,1110-4977,1110-4328,Credit Card - Visa,425.00
-ephss,12/12/2025,1110-4977,1110-4328,Credit Card - Visa,152.61
-ephss,12/13/2025,1110-4977,1110-4328,Credit Card - Visa,143.00
-ephss,12/14/2025,1110-4977,1110-4328,Credit Card - Master Card,80.00
-ephss,12/14/2025,1110-4977,1110-4328,Credit Card - Visa,256.00
-ephss,12/15/2025,1110-4977,1110-4328,Credit Card - Visa,300.31
-ephss,12/16/2025,1110-4977,1110-4328,Credit Card - Visa,1832.50
-ephss,12/17/2025,1110-4977,1110-4328,Credit Card - Master Card,150.00
-ephss,12/18/2025,1110-4329,1110-4328,Credit Card - Master Card,101.40
-ephss,12/18/2025,1110-4329,1110-4328,Credit Card - Visa,121.00
-ephss,12/19/2025,1110-4329,1110-4328,Credit Card - Visa,94.00
-ephss,12/20/2025,1110-4329,1110-4328,Credit Card - Master Card,25.00
-ephss,12/20/2025,1110-4329,1110-4328,Credit Card - Visa,169.15
-ephss,12/21/2025,1110-4329,1110-4328,Credit Card - Visa,211.99
-ephss,12/23/2025,1110-4329,1110-4328,Credit Card - Master Card,254.00
-ephss,12/24/2025,1110-4329,1110-4328,Credit Card - Visa,44.32
-ephss,12/27/2025,1110-4329,1110-4328,Credit Card - Discover,168.00
-ephss,12/27/2025,1110-4329,1110-4328,Credit Card - Master Card,53.99
-ephss,12/28/2025,1110-4329,1110-4328,Credit Card - Discover,348.00
-ephss,12/28/2025,1110-4329,1110-4328,Credit Card - Visa,311.00
-ephss,12/29/2025,1110-4329,1110-4328,ACH,210.00
-ephss,12/29/2025,1110-4329,1110-4328,Credit Card - Master Card,30.00
-ephss,12/29/2025,1110-4329,1110-4328,Credit Card - Visa,206.00
-ephss,12/30/2025,1110-4329,1110-4328,ACH,577.00
-ephss,12/30/2025,1110-4329,1110-4328,Credit Card - Discover,136.00
-ephss,12/30/2025,1110-4329,1110-4328,Credit Card - Master Card,237.00
-ephss,12/30/2025,1110-4329,1110-4328,Credit Card - Visa,101.00
-ephss,12/31/2025,1110-4329,1110-4328,Credit Card - Discover,119.00
-ephss,12/31/2025,1110-4329,1110-4328,Credit Card - Visa,86.99
-pshores,12/10/2025,1110-1532,1110-4918,Credit Card - Master Card,210.00
-pshores,12/11/2025,1110-1532,1110-4918,Credit Card - Visa,162.23
-pshores,12/13/2025,1110-4972,1110-4918,Credit Card - Visa,86.99
-pshores,12/14/2025,1110-4972,1110-4918,Credit Card - Master Card,509.58
-pshores,12/14/2025,1110-4972,1110-4918,Credit Card - Visa,263.94
-pshores,12/17/2025,1110-4972,1110-4918,Credit Card - Visa,371.41
-pshores,12/18/2025,1110-4972,1110-4918,Credit Card - Master Card,240.00
-pshores,12/18/2025,1110-4972,1110-4918,Credit Card - Visa,458.08
-pshores,12/19/2025,1110-4972,1110-4918,Credit Card - Visa,187.99
-pshores,12/21/2025,1110-4972,1110-4918,Credit Card - Visa,364.00
-pshores,12/24/2025,1110-4972,1110-4918,Credit Card - Master Card,250.00
-pshores,12/24/2025,1110-4972,1110-4918,Credit Card - Visa,446.05
-pshores,12/25/2025,1110-4972,1110-4918,Credit Card - Master Card,254.00
-pshores,12/25/2025,1110-4972,1110-4918,Credit Card - Visa,349.36
-pshores,12/28/2025,1110-4972,1110-4918,Credit Card - Discover,29.42
-pshores,12/29/2025,1110-4972,1110-4918,Credit Card - Master Card,647.00
-pshores,12/29/2025,1110-4972,1110-4918,Credit Card - Visa,322.00
-pshores,12/30/2025,1110-4972,1110-4918,Credit Card - Master Card,1999.00
-pshores,12/31/2025,1110-4972,1110-4918,Credit Card - Discover,197.00
-pshores,12/31/2025,1110-4972,1110-4918,Credit Card - Master Card,207.00
-pshores,12/31/2025,1110-4972,1110-4918,Credit Card - Visa,298.39
+epcpss,12/17/2025,1110-4952,1110-1528,Credit Card - Discover,182.00
+epcpss,12/19/2025,1110-4952,1110-1528,Credit Card - American Express,46.00
+epcpss,12/19/2025,1110-4952,1110-1528,Credit Card - Visa,474.00
+epcpss,12/20/2025,1110-4952,1110-1528,Credit Card - Visa,548.00
+epcpss,12/21/2025,1110-4952,1110-1528,Credit Card - Visa,216.00
+epcpss,12/25/2025,1110-4952,1110-1528,Credit Card - Visa,210.00
+epcpss,12/26/2025,1110-4952,1110-1528,Credit Card - Master Card,326.00
+epcpss,12/26/2025,1110-4952,1110-1528,Credit Card - Visa,468.00
+epcpss,12/27/2025,1110-4952,1110-1528,Credit Card - Visa,647.00
+epcpss,12/29/2025,1110-4952,1110-1528,Credit Card - Master Card,32.77
+epcpss,12/29/2025,1110-4952,1110-1528,Credit Card - Visa,729.00
+epcpss,12/30/2025,1110-4952,1110-1528,Credit Card - Master Card,460.00
+epcpss,12/31/2025,1110-4952,1110-1528,Credit Card - Master Card,549.00
+epcpss,12/31/2025,1110-4952,1110-1528,Credit Card - Visa,555.00
+ephss2,12/10/2025,1110-1532,1110-4948,ACH,79.28
+ephss2,12/10/2025,1110-1532,1110-4948,Credit Card - Master Card,510.00
+ephss2,12/11/2025,1110-1532,1110-4948,Credit Card - Visa,1608.00
+ephss2,12/12/2025,1110-1532,1110-4948,Credit Card - Visa,55.84
+ephss,12/18/2025,1110-4329,1110-4977,Credit Card - Master Card,101.40
+ephss,12/18/2025,1110-4329,1110-4977,Credit Card - Visa,121.00
+ephss,12/19/2025,1110-4329,1110-4977,Credit Card - Visa,94.00
+ephss,12/20/2025,1110-4329,1110-4977,Credit Card - Master Card,25.00
+ephss,12/20/2025,1110-4329,1110-4977,Credit Card - Visa,169.15
+ephss,12/21/2025,1110-4329,1110-4977,Credit Card - Visa,211.99
+ephss,12/23/2025,1110-4329,1110-4977,Credit Card - Master Card,254.00
+ephss,12/24/2025,1110-4329,1110-4977,Credit Card - Visa,44.32
+ephss,12/27/2025,1110-4329,1110-4977,Credit Card - Discover,168.00
+ephss,12/27/2025,1110-4329,1110-4977,Credit Card - Master Card,53.99
+ephss,12/28/2025,1110-4329,1110-4977,Credit Card - Discover,348.00
+ephss,12/28/2025,1110-4329,1110-4977,Credit Card - Visa,311.00
+ephss,12/29/2025,1110-4329,1110-4977,ACH,210.00
+ephss,12/29/2025,1110-4329,1110-4977,Credit Card - Master Card,30.00
+ephss,12/29/2025,1110-4329,1110-4977,Credit Card - Visa,206.00
+ephss,12/30/2025,1110-4329,1110-4977,ACH,577.00
+ephss,12/30/2025,1110-4329,1110-4977,Credit Card - Discover,136.00
+ephss,12/30/2025,1110-4329,1110-4977,Credit Card - Master Card,237.00
+ephss,12/30/2025,1110-4329,1110-4977,Credit Card - Visa,101.00
+ephss,12/31/2025,1110-4329,1110-4977,Credit Card - Discover,119.00
+ephss,12/31/2025,1110-4329,1110-4977,Credit Card - Visa,86.99
+pshores,12/10/2025,1110-1532,1110-4972,Credit Card - Master Card,210.00
+pshores,12/11/2025,1110-1532,1110-4972,Credit Card - Visa,162.23
 sms-crys,12/09/2025,1110-1532,1110-4974,Credit Card - Master Card,383.00
 sms-crys,12/09/2025,1110-1532,1110-4974,Credit Card - Visa,110.61
 smslawnd,12/10/2025,1110-1532,1110-4986,Credit Card - Visa,1642.00
@@ -159,12 +60,6 @@ sselkhar,12/12/2025,1110-1532,1110-4991,Credit Card - Master Card,1861.00
 sselkhar,12/12/2025,1110-1532,1110-4991,Credit Card - Visa,175.00
 sslaport,12/08/2025,1110-1532,1110-4990,Credit Card - Master Card,119.00
 sslexing,12/11/2025,1110-1532,1110-4976,Credit Card - Visa,353.68
-ssmadiso,12/14/2025,1110-4988,1100-0001,Credit Card - Visa,115.76
-ssmadiso,12/15/2025,1110-4988,1100-0001,Credit Card - Visa,80.55
-ssmadiso,12/19/2025,1110-4988,1100-0001,Credit Card - Master Card,318.19
-ssmadiso,12/19/2025,1110-4988,1100-0001,Credit Card - Visa,140.00
-ssmadiso,12/26/2025,1110-4988,1100-0001,Credit Card - Master Card,37.00
-ssmadiso,12/30/2025,1110-4988,1100-0001,Credit Card - Visa,119.00
 ssmelbou,12/12/2025,1110-1532,1110-4975,Credit Card - Discover,78.68
 ssmicity,12/09/2025,1110-1532,1110-4938,Credit Card - Master Card,43.77
 ssmicity,12/10/2025,1110-1532,1110-4938,ACH,384.00
@@ -189,14 +84,14 @@ sssilspr,12/10/2025,1110-1532,1110-4939,Credit Card - Visa,1599.00
 sssilspr,12/11/2025,1110-1532,1110-4939,Credit Card - Master Card,377.00
 sssilspr,12/11/2025,1110-1532,1110-4939,Credit Card - Visa,210.00
 sssilspr,12/12/2025,1110-1532,1110-4939,Credit Card - Visa,1741.72
-ssvenice,12/10/2025,1110-1532,1110-4923,Credit Card - Visa,78.34
-ssvenice,12/12/2025,1110-4963,1110-4923,Credit Card - Visa,68.35
-ssvenice,12/14/2025,1110-4963,1110-4923,Credit Card - Visa,322.30
-ssvenice,12/15/2025,1110-4963,1110-4923,Credit Card - Visa,62.45
-ssvenice,12/16/2025,1110-4963,1110-4923,ACH,62.55
-ssvenice,12/16/2025,1110-4963,1110-4923,Credit Card - Visa,119.61
-ssvenice,12/17/2025,1110-4963,1110-4923,Credit Card - Visa,136.22
-ssvenice,12/28/2025,1110-4963,1110-4923,ACH,445.35
+ssvenice,12/10/2025,1110-1532,1110-4924,Credit Card - Visa,78.34
+ssvenice,12/12/2025,1110-4963,1110-4924,Credit Card - Visa,68.35
+ssvenice,12/14/2025,1110-4963,1110-4924,Credit Card - Visa,322.30
+ssvenice,12/15/2025,1110-4963,1110-4924,Credit Card - Visa,62.45
+ssvenice,12/16/2025,1110-4963,1110-4924,ACH,62.55
+ssvenice,12/16/2025,1110-4963,1110-4924,Credit Card - Visa,119.61
+ssvenice,12/17/2025,1110-4963,1110-4924,Credit Card - Visa,136.22
+ssvenice,12/28/2025,1110-4963,1110-4924,ACH,445.35
 sswildwo,12/10/2025,1110-1532,1110-4954,Credit Card - Visa,171.42
 sswildwo,12/11/2025,1110-1532,1110-4954,Credit Card - Master Card,202.23
 sswildwo,12/11/2025,1110-1532,1110-4954,Credit Card - Visa,54.55
