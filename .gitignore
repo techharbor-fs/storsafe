@@ -18,6 +18,7 @@ logs/
 *_credentials.json
 *.json
 !requirements.json
+!.cursor/worktrees.json
 
 # Environment variables
 .env
@@ -56,3 +57,6 @@ desktop.ini
 # Edge → Yardi: do not ignore anything in this workflow folder
 !09. Edge to Yardi/**
 09. Edge to Yardi/**/__pycache__/
+
+# Cursor parallel agents
+.agent-id

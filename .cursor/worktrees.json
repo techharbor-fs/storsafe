@@ -1,0 +1,10 @@
+{
+  "setup-worktree-windows": [
+    "pip install -r requirements.txt",
+    "echo %AGENT_ID% > .agent-id"
+  ],
+  "setup-worktree-unix": [
+    "pip install -r requirements.txt",
+    "echo $AGENT_ID > .agent-id"
+  ]
+}
