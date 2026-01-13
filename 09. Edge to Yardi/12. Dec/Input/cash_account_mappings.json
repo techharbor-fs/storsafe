@@ -108,16 +108,16 @@
     "Refund Checks": "1110-4977"
   },
   "ephss2": {
-    "ACH": "1110-4948",
-    "Cash": "1110-4948",
-    "Checks": "1110-4948",
-    "Credit Card - American Express": "1110-4948",
-    "Credit Card - Discover": "1110-4948",
-    "Credit Card - Master Card": "1110-4948",
-    "Credit Card - Other": "1110-4948",
-    "Credit Card - Visa": "1110-4948",
-    "Money Order": "1110-4948",
-    "Refund Checks": "1110-4948"
+    "Cash": "1110-4901",
+    "Checks": "1110-4901",
+    "ACH": "1110-4901",
+    "Money Order": "1110-4901",
+    "Credit Card - Visa": "1110-4901",
+    "Credit Card - Master Card": "1110-4901",
+    "Credit Card - American Express": "1110-4901",
+    "Credit Card - Discover": "1110-4901",
+    "Credit Card - Other": "1110-4901",
+    "Refund Checks": "1110-4901"
   },
   "epmss": {
     "ACH": "1110-4909",

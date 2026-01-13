@@ -439,8 +439,16 @@ def transform_csv_file(
 
 def run_transform_workflow(
     month_folder: str,
+    property_filter: Optional[list[str]] = None,
+    skip_compile: bool = False,
 ) -> TransformReport:
-    """Run the full transformation workflow."""
+    """Run the full transformation workflow.
+    
+    Args:
+        month_folder: Month folder name (e.g., '12. Dec')
+        property_filter: Optional list of property codes to process. If None, process all.
+        skip_compile: If True, skip regenerating compiled files (useful for single property updates)
+    """
     
     # Parse report month from folder name and infer year from source files
     month_match = re.match(r"(\d+)\.", month_folder)
@@ -498,8 +506,19 @@ def run_transform_workflow(
     # Find source files
     print("\n=== Finding source files ===")
     source_files = sorted(edge_downloads_dir.glob("edge_gl_by_day__*__*.csv"))
+    
+    # Filter by property if specified
+    if property_filter:
+        property_filter_lower = [p.lower() for p in property_filter]
+        source_files = [
+            f for f in source_files
+            if extract_property_code_from_filename(f.name) and
+               extract_property_code_from_filename(f.name).lower() in property_filter_lower
+        ]
+        print(f"Filtering to {len(source_files)} files for properties: {property_filter}")
+    
     report.total_files = len(source_files)
-    print(f"Found {len(source_files)} source files in edge_downloads/")
+    print(f"Found {len(source_files)} source files to process")
     
     if not source_files:
         report.status = "FAILED"
@@ -570,52 +589,55 @@ def run_transform_workflow(
     # individual files on disk. This guarantees the compiled file matches the
     # individual files exactly.
     
-    # Copy individual Jay property files to Output/ first
-    print("\n=== Generating individual Jay property files ===")
-    for prop_code in sorted(jay_facilities):
-        prop_file = import_template_dir / f"yardi_import__{prop_code}__{report_month}.csv"
-        if prop_file.exists():
-            # Copy to root output folder
-            individual_path = output_dir / f"yardi_import__{prop_code}__{report_month}.csv"
-            with prop_file.open("r", newline="", encoding="utf-8-sig") as f:
+    if skip_compile:
+        print("\n=== Skipping compiled file generation (--skip-compile) ===")
+    else:
+        # Copy individual Jay property files to Output/ first
+        print("\n=== Generating individual Jay property files ===")
+        for prop_code in sorted(jay_facilities):
+            prop_file = import_template_dir / f"yardi_import__{prop_code}__{report_month}.csv"
+            if prop_file.exists():
+                # Copy to root output folder
+                individual_path = output_dir / f"yardi_import__{prop_code}__{report_month}.csv"
+                with prop_file.open("r", newline="", encoding="utf-8-sig") as f:
+                    rows = list(csv.reader(f))
+                with individual_path.open("w", newline="", encoding="utf-8") as f:
+                    csv.writer(f).writerows(rows)
+                report.jay_property_files.append(str(individual_path))
+                print(f"  [OK] {prop_code}: {individual_path.name} ({len(rows)} rows)")
+        
+        # Build compiled files by reading from individual files on disk
+        print("\n=== Generating compiled files (from individual files) ===")
+        
+        # All facilities combined - read from import_template/
+        all_transformed_rows = []
+        for source_path in sorted(import_template_dir.glob(f"yardi_import__*__{report_month}.csv")):
+            with source_path.open("r", newline="", encoding="utf-8-sig") as f:
                 rows = list(csv.reader(f))
-            with individual_path.open("w", newline="", encoding="utf-8") as f:
-                csv.writer(f).writerows(rows)
-            report.jay_property_files.append(str(individual_path))
-            print(f"  [OK] {prop_code}: {individual_path.name} ({len(rows)} rows)")
-    
-    # Build compiled files by reading from individual files on disk
-    print("\n=== Generating compiled files (from individual files) ===")
-    
-    # All facilities combined - read from import_template/
-    all_transformed_rows = []
-    for source_path in sorted(import_template_dir.glob(f"yardi_import__*__{report_month}.csv")):
-        with source_path.open("r", newline="", encoding="utf-8-sig") as f:
-            rows = list(csv.reader(f))
-            all_transformed_rows.extend(rows)
-    
-    compiled_path = output_dir / f"yardi_import_compiled__{report_month}.csv"
-    with compiled_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerows(all_transformed_rows)
-    report.compiled_file = str(compiled_path)
-    print(f"  [OK] Compiled all: {compiled_path.name} ({len(all_transformed_rows)} rows)")
-    
-    # Jay-only facilities - read from Output/ (the files we just copied)
-    jay_transformed_rows = []
-    for prop_code in sorted(jay_facilities):
-        jay_file = output_dir / f"yardi_import__{prop_code}__{report_month}.csv"
-        if jay_file.exists():
-            with jay_file.open("r", newline="", encoding="utf-8-sig") as f:
-                rows = list(csv.reader(f))
-                jay_transformed_rows.extend(rows)
-    
-    jay_path = output_dir / f"yardi_import_Jay__{report_month}.csv"
-    with jay_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerows(jay_transformed_rows)
-    report.jay_file = str(jay_path)
-    print(f"  [OK] Jay combined: {jay_path.name} ({len(jay_transformed_rows)} rows)")
+                all_transformed_rows.extend(rows)
+        
+        compiled_path = output_dir / f"yardi_import_compiled__{report_month}.csv"
+        with compiled_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(all_transformed_rows)
+        report.compiled_file = str(compiled_path)
+        print(f"  [OK] Compiled all: {compiled_path.name} ({len(all_transformed_rows)} rows)")
+        
+        # Jay-only facilities - read from Output/ (the files we just copied)
+        jay_transformed_rows = []
+        for prop_code in sorted(jay_facilities):
+            jay_file = output_dir / f"yardi_import__{prop_code}__{report_month}.csv"
+            if jay_file.exists():
+                with jay_file.open("r", newline="", encoding="utf-8-sig") as f:
+                    rows = list(csv.reader(f))
+                    jay_transformed_rows.extend(rows)
+        
+        jay_path = output_dir / f"yardi_import_Jay__{report_month}.csv"
+        with jay_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerows(jay_transformed_rows)
+        report.jay_file = str(jay_path)
+        print(f"  [OK] Jay combined: {jay_path.name} ({len(jay_transformed_rows)} rows)")
     
     # Generate cash corrections report
     if report.all_cash_corrections:
@@ -692,14 +714,24 @@ def main():
     
     parser = argparse.ArgumentParser(description="Transform Edge GL CSVs to Yardi import format")
     parser.add_argument("--month", required=True, help="Month folder name (e.g., '12. Dec')")
+    parser.add_argument("--property", "-p", nargs="+", help="Process only specific property code(s) (e.g., -p ssvenice or -p ephss ephss2)")
+    parser.add_argument("--skip-compile", action="store_true", help="Skip regenerating compiled files")
     parser.add_argument("--debug", action="store_true", help="Enable debug output")
     
     args = parser.parse_args()
     DEBUG = args.debug
     
-    print_banner(f"Edge to Yardi Transform - {args.month}")
+    # Build title
+    title = f"Edge to Yardi Transform - {args.month}"
+    if args.property:
+        title += f" (properties: {', '.join(args.property)})"
+    print_banner(title)
     
-    report = run_transform_workflow(month_folder=args.month)
+    report = run_transform_workflow(
+        month_folder=args.month,
+        property_filter=args.property,
+        skip_compile=args.skip_compile,
+    )
     print_summary(report)
 
 
