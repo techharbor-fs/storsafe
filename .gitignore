@@ -55,3 +55,4 @@ desktop.ini
 
 # Edge → Yardi: do not ignore anything in this workflow folder
 !09. Edge to Yardi/**
+09. Edge to Yardi/**/__pycache__/
