@@ -60,3 +60,6 @@ desktop.ini
 
 # Cursor parallel agents
 .agent-id
+
+# Global instructions (symlink to workspace root; local only)
+GLOBAL_INSTRUCTIONS.md
