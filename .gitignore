@@ -63,3 +63,6 @@ desktop.ini
 
 # Global instructions (symlink to workspace root; local only)
 GLOBAL_INSTRUCTIONS.md
+
+# Shared references (junction to workspace root; local only)
+.references/
