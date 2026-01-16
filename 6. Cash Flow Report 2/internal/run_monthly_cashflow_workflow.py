@@ -4,7 +4,13 @@ This script exists so we don't have to guess which file is the "main" one.
 
 Workflow:
 1) Prepare/rebuild the target workbook (copy template tabs + upload exports)
-2) Generate formulas + apply row highlighting in PORTFOLIO CASH FLOW
+   - Copy PORTFOLIO CASH FLOW, PROPERTY CODES, PROPERTY STATUS templates
+   - Copy MONTH END LIST
+   - Copy Summary page and Cash Needs from previous month (if available)
+   - Import HA-CF-{MONTH}, HA-CF-3MOS, HA-CF-YTD, HA-BS-{MONTH} from Excel exports
+2) Generate v1 CASH FLOW (ALL) reports (monthly + YTD)
+3) Generate v2 PORTFOLIO CASH FLOW formulas + apply row highlighting
+4) Populate Summary page with formulas referencing the generated reports
 
 Usage (example):
   python run_monthly_cashflow_workflow.py \
@@ -147,6 +153,11 @@ def main() -> None:
         action="store_true",
         help="Skip v2 PORTFOLIO CASH FLOW generator (only run prepare and v1).",
     )
+    parser.add_argument(
+        "--skip-summary",
+        action="store_true",
+        help="Skip Summary Page population (requires v1 reports to exist).",
+    )
     
     args = parser.parse_args()
     
@@ -166,6 +177,7 @@ def main() -> None:
     generate = here / "generate_property_cashflow_report.py"
 
     v1_script = (here.parent.parent / "2. Cash Flow Report" / "generate_cashflow_report.py").resolve()
+    summary_script = (here.parent.parent / "2. Cash Flow Report" / "populate_summary_page.py").resolve()
 
     mon3 = _month_abbrev_from_folder(args.month_folder)
     month_tab = f"HA-CF-{mon3}"
@@ -245,10 +257,25 @@ def main() -> None:
         print("status: DRY_RUN_COMPLETED")
         return
 
+    # Run v2 PORTFOLIO CASH FLOW generator
     if run_v2:
         _run(generate_cmd)
     else:
         print(f"\n[SKIPPED] v2 PORTFOLIO CASH FLOW generator (--only-{args.only_prepare and 'prepare' or 'v1'} or --skip-v2 flag active)")
+
+    # Run Summary Page population LAST (after both v1 and v2 reports are generated)
+    # This is run with check=False so it doesn't fail the entire workflow on rate limit errors
+    if run_v1 and allow_writes and not args.skip_summary:
+        print("\n=== RUN SUMMARY PAGE POPULATION ===")
+        summary_cmd = [sys.executable, str(summary_script), "--sheet-id", _extract_sheet_id(args.target_sheet), "--month", month_title]
+        if args.year is not None:
+            summary_cmd.extend(["--year", str(args.year)])
+        print(" ".join(summary_cmd))
+        result = subprocess.run(summary_cmd, env=env)
+        if result.returncode != 0:
+            print("\n[WARN] Summary Page population failed (possibly rate limit) - can be re-run separately")
+    elif args.skip_summary:
+        print("\n[SKIPPED] Summary Page population (--skip-summary flag)")
 
     print("\n=== RUN END ===")
     print("status: COMPLETED")

@@ -332,6 +332,184 @@ def _save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
 
 
+def _get_previous_month_sheet_id(state: dict, current_month_folder: str) -> str | None:
+    """Get the worksheet ID of the previous month from the state history.
+    
+    The state maintains a history of month_folder -> sheet_id mappings.
+    This function finds the previous month's sheet ID if it exists.
+    """
+    month_history = state.get("month_sheet_history", {})
+    
+    # Parse current month number from folder name (e.g., "11. Nov" -> 11)
+    try:
+        current_month_num = int(current_month_folder.split(".")[0].strip())
+    except (ValueError, IndexError):
+        return None
+    
+    # Find previous month (handle year wrap: Jan -> Dec of previous implicit year)
+    prev_month_num = current_month_num - 1 if current_month_num > 1 else 12
+    
+    # Search for previous month in history
+    for folder, sheet_id in month_history.items():
+        try:
+            folder_month_num = int(folder.split(".")[0].strip())
+            if folder_month_num == prev_month_num:
+                return sheet_id
+        except (ValueError, IndexError):
+            continue
+    
+    return None
+
+
+def _update_summary_month_headers(
+    worksheet: gspread.Worksheet, 
+    new_month: str,
+) -> None:
+    """Update month headers in Summary page after copying from previous month.
+    
+    Updates:
+    - C1: New month name (e.g., "November")
+    - G1: "YTD - {month}" (e.g., "YTD - November")
+    
+    Note: Formula references in data cells are NOT cleared here.
+    The populate_summary_page.py script will update those later.
+    
+    Args:
+        worksheet: The worksheet to update
+        new_month: The new month name (e.g., "November")
+    """
+    try:
+        updates = [
+            {'range': 'C1', 'values': [[new_month]]},
+            {'range': 'G1', 'values': [[f"YTD - {new_month}"]]},
+        ]
+        worksheet.batch_update(updates, value_input_option='USER_ENTERED')
+        print(f"  [OK] Updated month headers: C1='{new_month}', G1='YTD - {new_month}'")
+    except Exception as e:
+        print(f"  [WARN] Could not update month headers: {e}")
+
+
+def _find_tabs_matching_pattern(spreadsheet: gspread.Spreadsheet, *patterns: str) -> list[str]:
+    """Find tabs whose titles contain any of the given patterns (case-insensitive).
+    
+    Args:
+        spreadsheet: The Google Spreadsheet to search
+        patterns: One or more substrings to search for in tab titles
+        
+    Returns:
+        List of tab titles that match any pattern
+    """
+    matching_tabs = []
+    worksheets = spreadsheet.worksheets()
+    
+    for ws in worksheets:
+        title_lower = ws.title.lower()
+        for pattern in patterns:
+            if pattern.lower() in title_lower:
+                matching_tabs.append(ws.title)
+                break  # Don't add same tab twice if it matches multiple patterns
+    
+    return matching_tabs
+
+
+def _copy_tabs_from_previous_month(
+    gc: gspread.Client,
+    prev_sheet_id: str,
+    target_ss: gspread.Spreadsheet,
+    patterns: list[str],
+    month_label: str,
+    dry_run: bool,
+    service_account_email: str | None = None,
+) -> list[str]:
+    """Copy tabs matching patterns from previous month's workbook to current workbook.
+    
+    Args:
+        gc: Authorized gspread client
+        prev_sheet_id: The previous month's spreadsheet ID
+        target_ss: The current month's target spreadsheet
+        patterns: List of patterns to match tab names (e.g., ["summary", "cash needs"])
+        month_label: The new month name (e.g., "November") for updating headers
+        dry_run: If True, only print what would happen
+        service_account_email: For error messages
+        
+    Returns:
+        List of tab titles that were copied
+    """
+    print(f"\n  Opening previous month's workbook to copy Summary/Cash Needs tabs...")
+    
+    try:
+        prev_ss = gc.open_by_key(prev_sheet_id)
+    except Exception as e:
+        print(f"  [WARN] Could not open previous month's workbook: {e}")
+        print(f"         Sheet ID: {prev_sheet_id}")
+        return []
+    
+    # Find matching tabs
+    matching_tabs = _find_tabs_matching_pattern(prev_ss, *patterns)
+    
+    if not matching_tabs:
+        print(f"  [INFO] No tabs matching {patterns} found in previous month's workbook")
+        return []
+    
+    print(f"  Found tabs to copy: {matching_tabs}")
+    
+    copied_tabs = []
+    for tab_title in matching_tabs:
+        try:
+            if dry_run:
+                print(f"  [DRY RUN] Would copy tab '{tab_title}' from previous month")
+                copied_tabs.append(tab_title)
+            else:
+                # Check if tab already exists in target
+                existing_titles = [ws.title for ws in target_ss.worksheets()]
+                if tab_title in existing_titles:
+                    print(f"  [SKIP] Tab '{tab_title}' already exists in target workbook")
+                    continue
+                
+                # Clean up any leftover "Copy of" tabs from previous failed attempts
+                copy_of_title = f"Copy of {tab_title}"
+                if copy_of_title in existing_titles:
+                    try:
+                        old_copy = target_ss.worksheet(copy_of_title)
+                        target_ss.del_worksheet(old_copy)
+                        print(f"  [CLEANUP] Deleted leftover '{copy_of_title}'")
+                    except Exception:
+                        pass
+
+                # Copy the tab
+                src_ws = prev_ss.worksheet(tab_title)
+                copy_result = src_ws.copy_to(target_ss.id)
+
+                # Get the new sheet ID and rename it (removes "Copy of" prefix)
+                if isinstance(copy_result, dict):
+                    new_sheet_id = copy_result.get("sheetId")
+                else:
+                    new_sheet_id = copy_result
+                
+                if new_sheet_id is not None:
+                    new_ws = target_ss.get_worksheet_by_id(int(new_sheet_id))
+                    if new_ws:
+                        # Rename to remove "Copy of " prefix
+                        new_ws.update_title(tab_title)
+                        print(f"  [OK] Copied and renamed tab '{tab_title}' from previous month")
+                        
+                        # For Summary tabs, update the month headers (C1 and G1)
+                        # Formula references are NOT cleared - populate_summary_page.py will update them
+                        if "summary" in tab_title.lower():
+                            _update_summary_month_headers(new_ws, month_label)
+                        
+                        copied_tabs.append(tab_title)
+                    else:
+                        print(f"  [WARN] Could not find copied tab to rename: {tab_title}")
+                else:
+                    print(f"  [WARN] Unexpected copy result for {tab_title}")
+                    
+        except Exception as e:
+            print(f"  [WARN] Failed to copy tab '{tab_title}': {e}")
+    
+    return copied_tabs
+
+
 def _resolve_service_account_file() -> str:
     service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
     if service_account_json:
@@ -742,8 +920,15 @@ def _finalize_target_workbook(
         )
 
     # Enforce tab order.
+    # Note: CASH FLOW (ALL) reports and Summary/Cash Needs are added by v1 generator
+    # and prepare script respectively, but we include them here for proper ordering
+    month_upper = month_tab.replace("HA-CF-", "")  # e.g., "NOV"
     desired_titles = [
         "PORTFOLIO CASH FLOW",
+        f"CASH FLOW (ALL) - {month_upper}",
+        "CASH FLOW (ALL) - YTD",
+        "SUMMARY",           # Copied from previous month (partial match)
+        "Cash Needs",        # Copied from previous month (partial match)
         month_tab,
         "HA-CF-3MOS",
         "HA-CF-YTD",
@@ -755,15 +940,27 @@ def _finalize_target_workbook(
     title_to_ws: dict[str, gspread.Worksheet] = {}
     for ws in target_ss.worksheets():
         norm = _normalize_title(ws.title)
+        ws_title_lower = ws.title.lower()
         for desired in desired_titles:
+            # Exact match
             if norm == _normalize_title(desired):
                 title_to_ws[desired] = ws
                 break
+            # Partial match for Summary and Cash Needs (they have variable names)
+            if desired == "SUMMARY" and "summary" in ws_title_lower:
+                title_to_ws[desired] = ws
+                break
+            if desired == "Cash Needs" and "cash needs" in ws_title_lower:
+                title_to_ws[desired] = ws
+                break
 
-    for idx, title in enumerate(desired_titles):
+    # Only set indices for tabs that actually exist, using sequential indices
+    current_idx = 0
+    for title in desired_titles:
         ws = title_to_ws.get(title)
         if ws:
-            _set_tab_properties(target_ss, ws, index=idx)
+            _set_tab_properties(target_ss, ws, index=current_idx)
+            current_idx += 1
 
 
 def _find_sheet_id_by_title(ss: gspread.Spreadsheet, title: str) -> int | None:
@@ -923,7 +1120,7 @@ def _delete_other_tabs(
         delete_candidates.append((title, sheet_id))
 
     if existing_keep == 0:
-        print("\n⚠️  Skip deleting other tabs: none of the keep tabs exist yet.")
+        print("\n[WARN] Skip deleting other tabs: none of the keep tabs exist yet.")
         return
 
     if not delete_candidates:
@@ -973,7 +1170,7 @@ def _batch_update_tab_properties(
 ) -> None:
     sheet_id = _find_sheet_id_by_title(ss, title)
     if sheet_id is None:
-        print(f"  ⚠️ Could not find sheetId for tab: {title}")
+        print(f"  [WARN] Could not find sheetId for tab: {title}")
         return
 
     fields: list[str] = []
@@ -1266,9 +1463,18 @@ def main() -> None:
         print("\nCleaning up draft/duplicate tabs...")
         _cleanup_draft_tabs(target_ss, dry_run=dry_run)
 
+    # Get previous month's sheet ID before updating state
+    prev_month_sheet_id = _get_previous_month_sheet_id(state, month_folder)
+    
     # Persist last-used inputs once we know TARGET is accessible.
     state["last_target_sheet_id"] = target_id
     state["last_month_folder"] = month_folder
+    
+    # Maintain history of month_folder -> sheet_id for previous month lookups
+    if "month_sheet_history" not in state:
+        state["month_sheet_history"] = {}
+    state["month_sheet_history"][month_folder] = target_id
+    
     _save_state(state)
 
     template_ss = None
@@ -1300,6 +1506,12 @@ def main() -> None:
         print(f"      - {TEMPLATE_TABS[2]} (black, hidden)")
         print("  - Copy month end list:")
         print(f"      - {MONTH_END_TAB} -> {MONTH_END_TARGET_TAB} (black, hidden)")
+        if prev_month_sheet_id:
+            print("  - Copy from previous month's workbook:")
+            print(f"      - Tabs containing 'Summary' (if found)")
+            print(f"      - Tabs containing 'Cash Needs' (if found)")
+        else:
+            print("  - Skip Summary/Cash Needs copy (no previous month in history)")
     if args.skip_upload:
         print("  - Skip importing HA-CF/HA-BS tabs")
     else:
@@ -1358,11 +1570,29 @@ def main() -> None:
             hidden=True,
             dry_run=dry_run,
         )
+        
+        # Copy Summary and Cash Needs tabs from previous month's workbook (if available)
+        if prev_month_sheet_id:
+            print(f"\n  Previous month's workbook found: {prev_month_sheet_id}")
+            month_full_name = MONTH_NAMES.get(month_abbrev, month_abbrev)
+            _copy_tabs_from_previous_month(
+                gc,
+                prev_month_sheet_id,
+                target_ss,
+                patterns=["summary", "cash needs"],
+                month_label=month_full_name,
+                dry_run=dry_run,
+                service_account_email=email,
+            )
+        else:
+            print(f"\n  [INFO] No previous month's workbook found in history - skipping Summary/Cash Needs copy")
+            print(f"         (This is expected for the first month in the workflow)")
 
         # Note: HA-CF and HA-BS tabs are NOT copied from a reference workbook.
         # They are imported directly from the Excel exports with their formatting preserved.
 
     if args.delete_other_tabs:
+        # Build the keep_titles set with exact tab names
         keep_titles = {
             "PORTFOLIO CASH FLOW",
             "PROPERTY CODES",
@@ -1373,11 +1603,18 @@ def main() -> None:
             "HA-CF-YTD",
             bs_tab,
         }
+        
+        # Also keep any tabs matching Summary or Cash Needs patterns (they have variable names)
+        for ws in target_ss.worksheets():
+            title_lower = ws.title.lower()
+            if "summary" in title_lower or "cash needs" in title_lower:
+                keep_titles.add(ws.title)
+        
         _delete_other_tabs(target_ss, keep_titles=keep_titles, dry_run=dry_run)
 
     if args.skip_upload:
         _finalize_target_workbook(target_ss, month_tab=month_tab, bs_tab=bs_tab, dry_run=dry_run)
-        print("\n✅ Done (tabs copied / styled).")
+        print("\n[OK] Done (tabs copied / styled).")
         return
 
     exports = _detect_exports(month_dir)
@@ -1433,7 +1670,7 @@ def main() -> None:
     target_ss = gc.open_by_key(target_id)
     _finalize_target_workbook(target_ss, month_tab=month_tab, bs_tab=bs_tab, dry_run=dry_run)
 
-    print("\n✅ Monthly workbook prepared.")
+    print("\n[OK] Monthly workbook prepared.")
 
 
 if __name__ == "__main__":

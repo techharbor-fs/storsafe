@@ -24,6 +24,7 @@ from gspread_formatting import CellFormat, Color, format_cell_range
 from difflib import SequenceMatcher
 import sys
 import time
+from datetime import datetime
 
 # Configuration
 service_account_json = os.environ.get("SERVICE_ACCOUNT_JSON")
@@ -237,7 +238,9 @@ class PropertyCashFlowGenerator:
 
         self.month_tab = month_tab
         self.month_label = month_label
-        self.skip_month_end = skip_month_end
+        
+        # Auto-skip month end highlighting if current month is 2+ months after target report month
+        self.skip_month_end = skip_month_end or self._should_skip_month_end_by_date(month_label)
         
         self.portfolio_tab = portfolio_tab
         self.property_codes_tab = property_codes_tab
@@ -257,7 +260,7 @@ class PropertyCashFlowGenerator:
             self.month_end_ws = self.spreadsheet.worksheet(fallback)
             self.month_end_tab = fallback
         
-        print("✅ Connected to Google Sheets")
+        print("[OK] Connected to Google Sheets")
         
         # Load all data upfront (batch operations)
         print("   Loading data...")
@@ -268,11 +271,11 @@ class PropertyCashFlowGenerator:
         self.month_end_data = self.month_end_ws.get_all_values()
         time.sleep(0.5)
         
-        # Load Property Status Tracker for filtering skip/sold properties
-        print("   Loading Property Status Tracker...")
+        # Load PROPERTY STATUS for filtering skip/sold properties
+        print("   Loading PROPERTY STATUS...")
         self.excluded_properties = []
         try:
-            status_tracker_ws = self.spreadsheet.worksheet('Property Status Tracker')
+            status_tracker_ws = self.spreadsheet.worksheet('PROPERTY STATUS')
             time.sleep(0.5)
             status_data = status_tracker_ws.get('A2:B100')
             time.sleep(0.5)
@@ -284,11 +287,11 @@ class PropertyCashFlowGenerator:
                         if prop_code and status_label.lower() in ['skip', 'sold']:
                             self.excluded_properties.append(prop_code)
                 if self.excluded_properties:
-                    print(f"      ✅ Excluding {len(self.excluded_properties)} properties with 'skip'/'sold' status: {', '.join(self.excluded_properties)}")
+                    print(f"      [OK] Excluding {len(self.excluded_properties)} properties with 'skip'/'sold' status: {', '.join(self.excluded_properties)}")
                 else:
-                    print(f"      ✅ No properties to exclude")
+                    print(f"      [OK] No properties to exclude")
         except gspread.WorksheetNotFound:
-            print(f"      ⚠️ 'Property Status Tracker' not found - all properties will be processed")
+            print(f"      [WARN] 'PROPERTY STATUS' not found - all properties will be processed")
         
         # Pre-load HA-CF sheets to avoid loading during processing
         print("   Pre-loading HA-CF sheets...")
@@ -299,7 +302,7 @@ class PropertyCashFlowGenerator:
             time.sleep(0.5)
             self.hacf_sheets[sheet_name] = ws.get_all_values()
             time.sleep(0.5)
-            print(f"      ✅ Loaded {sheet_name}")
+            print(f"      [OK] Loaded {sheet_name}")
         
         # Discover columns once for consistent lookups
         self.portfolio_prop_col = self.find_property_name_column(self.portfolio_data)
@@ -327,6 +330,54 @@ class PropertyCashFlowGenerator:
             self.bs_recon_status = self.check_balance_sheet_recon_status()
 
 
+    def _should_skip_month_end_by_date(self, month_label: str) -> bool:
+        """Check if current month is 2+ months after target report month.
+        
+        If the current date is already 2+ months beyond the target report month,
+        we skip month-end highlighting as the data is historical and doesn't need
+        the visual indicators anymore.
+        
+        Args:
+            month_label: Month name like 'November', 'January', etc.
+            
+        Returns:
+            True if highlighting should be skipped, False otherwise.
+        """
+        month_names = {
+            'january': 1, 'february': 2, 'march': 3, 'april': 4,
+            'may': 5, 'june': 6, 'july': 7, 'august': 8,
+            'september': 9, 'october': 10, 'november': 11, 'december': 12
+        }
+        
+        try:
+            target_month = month_names.get(month_label.lower().strip())
+            if target_month is None:
+                return False  # Can't determine, don't skip
+            
+            current_date = datetime.now()
+            current_month = current_date.month
+            current_year = current_date.year
+            
+            # Assume target year is current year, or previous year if target month > current month
+            # (e.g., generating December report in January means target is last year's December)
+            target_year = current_year
+            if target_month > current_month:
+                target_year = current_year - 1
+            
+            # Calculate months difference
+            months_diff = (current_year - target_year) * 12 + (current_month - target_month)
+            
+            if months_diff >= 2:
+                print(f"   [INFO] Target month ({month_label}) is {months_diff} months ago - skipping month-end highlighting")
+                return True
+            else:
+                return False
+                
+        except Exception as e:
+            print(f"   [WARN] Could not determine date comparison: {e}")
+            return False
+
+
     def print_property_code_mapping_debug(self):
         """Debug helper to verify which properties are found in Property Codes.
 
@@ -338,7 +389,7 @@ class PropertyCashFlowGenerator:
         """
 
         print("\n" + "="*100)
-        print("PROPERTY ↔ PROPERTY CODES MAPPING DEBUG")
+        print("PROPERTY <-> PROPERTY CODES MAPPING DEBUG")
         print("="*100)
 
         # Re-discover the name/code columns in Property Codes so we can show the exact matched name
@@ -346,10 +397,10 @@ class PropertyCashFlowGenerator:
         pc_code_col = self.find_code_column(self.property_codes_data, pc_name_col) if pc_name_col is not None else None
 
         if pc_name_col is None or pc_code_col is None:
-            print("   ⚠️ Cannot run mapping debug – Property Codes columns not identified")
+            print("   [WARN] Cannot run mapping debug – Property Codes columns not identified")
             return
 
-        # Build a quick lookup of code → list of names in Property Codes
+        # Build a quick lookup of code -> list of names in Property Codes
         code_to_names = {}
         for pc_row in self.property_codes_data:
             if len(pc_row) > max(pc_name_col, pc_code_col):
@@ -376,7 +427,7 @@ class PropertyCashFlowGenerator:
             pc_names = code_to_names.get(code, []) if code else []
             pc_names_str = "; ".join(pc_names) if pc_names else "(not found in Property Codes)"
             if matched_alias:
-                print(f"   {prop_name:<22} | {status:<12} | {code:<11} | {pc_names_str}  → matched: {matched_alias}")
+                print(f"   {prop_name:<22} | {status:<12} | {code:<11} | {pc_names_str}  -> matched: {matched_alias}")
             else:
                 print(f"   {prop_name:<22} | {status:<12} | {code:<11} | {pc_names_str}")
     
@@ -487,20 +538,20 @@ class PropertyCashFlowGenerator:
         # Find property name column in PORTFOLIO CASH FLOW
         prop_col = self.portfolio_prop_col
         if prop_col is None:
-            print("   ⚠️ Could not identify property name column!")
+            print("   [WARN] Could not identify property name column!")
             return properties
         
-        print(f"   ✅ Property names in PORTFOLIO CASH FLOW: column {prop_col}")
+        print(f"   [OK] Property names in PORTFOLIO CASH FLOW: column {prop_col}")
         
         # Find columns in Property Codes sheet
         pc_name_col = self.property_codes_name_col
         pc_code_col = self.property_codes_code_col
 
         if pc_name_col is None or pc_code_col is None:
-            print(f"   ⚠️ Could not identify Property Codes sheet columns!")
+            print(f"   [WARN] Could not identify Property Codes sheet columns!")
             return properties
         
-        print(f"   ✅ Property Codes sheet: names in column {pc_name_col}, codes in column {pc_code_col}")
+        print(f"   [OK] Property Codes sheet: names in column {pc_name_col}, codes in column {pc_code_col}")
         
         # Extract properties from PORTFOLIO CASH FLOW
         for row_idx, row in enumerate(self.portfolio_data):
@@ -625,7 +676,7 @@ class PropertyCashFlowGenerator:
         fuzzy_count = sum(1 for p in properties if p.get('status') == 'FUZZY_NEEDED')
         skip_count = sum(1 for p in properties if p.get('status') == 'SKIP')
         
-        print(f"\n✅ Property mapping complete:")
+        print(f"\n[OK] Property mapping complete:")
         print(f"   - {mapped_count} with Yardi codes")
         print(f"   - {fuzzy_count} need fuzzy matching")
         print(f"   - {skip_count} skipped")
@@ -643,12 +694,12 @@ class PropertyCashFlowGenerator:
         prop_col = self.find_property_name_column(self.month_end_data)
         
         if prop_col is None:
-            print("   ⚠️ Could not find property column")
+            print("   [WARN] Could not find property column")
             return status_map
 
         status_col = self.find_month_end_status_column(self.month_end_data)
         if status_col is None:
-            print("   ⚠️ Could not locate 'Month End review' column from headers; defaulting to column D")
+            print("   [WARN] Could not locate 'Month End review' column from headers; defaulting to column D")
             status_col = 3  # Column D per sheet design
 
         status_letter = self.column_index_to_letter(status_col)
@@ -701,7 +752,7 @@ class PropertyCashFlowGenerator:
                 'names': info['names']
             }
         
-        print(f"\n✅ Found {len(status_map)} properties with ZERO green Month End review cells (scanned {monitored_rows} rows)")
+        print(f"\n[OK] Found {len(status_map)} properties with ZERO green Month End review cells (scanned {monitored_rows} rows)")
         preview = list(sorted(status_map.items(), key=lambda x: x[0].lower()))[:10]
         if preview:
             print("   Sample non-green entries:")
@@ -731,12 +782,12 @@ class PropertyCashFlowGenerator:
         status_map = {}
         prop_col = self.find_property_name_column(self.month_end_data)
         if prop_col is None:
-            print("   ⚠️ Could not find property column")
+            print("   [WARN] Could not find property column")
             return status_map
 
         bs_col = self.find_balance_sheet_recon_column(self.month_end_data)
         if bs_col is None:
-            print("   ⚠️ Could not locate 'Balance Sheet reconciliation' column from headers; defaulting to column E")
+            print("   [WARN] Could not locate 'Balance Sheet reconciliation' column from headers; defaulting to column E")
             bs_col = 4  # Column E per sheet design
 
         bs_letter = self.column_index_to_letter(bs_col)
@@ -799,7 +850,7 @@ class PropertyCashFlowGenerator:
             }
 
         print(
-            f"\n✅ Found {len(status_map)} properties needing Balance Sheet reconciliation (scanned {monitored_rows} rows)"
+            f"\n[OK] Found {len(status_map)} properties needing Balance Sheet reconciliation (scanned {monitored_rows} rows)"
         )
         preview = list(sorted(status_map.items(), key=lambda x: x[0].lower()))[:10]
         if preview:
@@ -846,7 +897,35 @@ class PropertyCashFlowGenerator:
     
     
     def find_property_code_row(self, hacf_data):
-        """Find row containing property codes"""
+        """Find row containing property codes.
+        
+        Per v1 generator fix: Property codes are in Row 5 (index 4) of HA-CF sheets.
+        This is more reliable than dynamic search which can find wrong rows.
+        """
+        # CRITICAL FIX: Row 5 (index 4) contains property codes in HA-CF sheets
+        # This matches the v1 generator approach which uses source_sheet.row_values(5)
+        PROPERTY_CODE_ROW_INDEX = 4  # Row 5 in 0-based index
+        
+        if len(hacf_data) > PROPERTY_CODE_ROW_INDEX:
+            # Verify this row has property codes by checking for multiple short alphanumeric values
+            row = hacf_data[PROPERTY_CODE_ROW_INDEX]
+            account_code_col, desc_col = self.find_account_columns(hacf_data)
+            
+            code_count = 0
+            for col_idx, cell in enumerate(row):
+                if account_code_col is not None and col_idx <= account_code_col + 1:
+                    continue
+                if account_code_col is None and desc_col == 0 and col_idx == 0:
+                    continue
+                
+                cell_str = str(cell).strip()
+                if cell_str and len(cell_str) <= 15 and (cell_str.replace('-', '').isalnum()):
+                    code_count += 1
+            
+            if code_count >= 5:  # Lower threshold since we're checking specific row
+                return PROPERTY_CODE_ROW_INDEX
+        
+        # Fallback to dynamic search if Row 5 doesn't have codes
         account_code_col, desc_col = self.find_account_columns(hacf_data)
         
         for row_idx, row in enumerate(hacf_data):
@@ -854,8 +933,6 @@ class PropertyCashFlowGenerator:
             for col_idx, cell in enumerate(row):
                 if account_code_col is not None and col_idx <= account_code_col + 1:
                     continue
-
-                # Yardi export layout: ignore the description/label column.
                 if account_code_col is None and desc_col == 0 and col_idx == 0:
                     continue
                 
@@ -1080,10 +1157,10 @@ class PropertyCashFlowGenerator:
         period_row_idx = self.find_period_row(hacf_data)
         
         if period_row_idx is None:
-            return False, "⚠️ Could not find period row"
+            return False, "[WARN] Could not find period row"
         
         period_text = ' '.join(hacf_data[period_row_idx])
-        return True, f"✅ Found period: {period_text[:80]}"
+        return True, f"[OK] Found period: {period_text[:80]}"
     
     
     def process_property(self, prop_info, period_name, hacf_data, sheet_name):
@@ -1097,13 +1174,13 @@ class PropertyCashFlowGenerator:
         
         yardi_code = prop_info.get('yardi_code')
         if not yardi_code:
-            print(f"   ⚠️ {prop_name}: No Yardi code, skipping")
+            print(f"   [WARN] {prop_name}: No Yardi code, skipping")
             return None
         
         metrics = self.extract_metrics(yardi_code, hacf_data, sheet_name)
         
         if metrics is None:
-            print(f"   ⚠️ {prop_name} ({yardi_code}): Not found in {period_name}")
+            print(f"   [WARN] {prop_name} ({yardi_code}): Not found in {period_name}")
             return None
         
         if self.skip_month_end:
@@ -1259,23 +1336,23 @@ class PropertyCashFlowGenerator:
             first_result = period_results[0]
             source_sheet = first_result.get('source_sheet')
             if not source_sheet:
-                print(f"   ⚠️ No source sheet for period '{period_name}'")
+                print(f"   [WARN] No source sheet for period '{period_name}'")
                 continue
             
             # Find period start column
             period_start_col = self.find_period_columns(portfolio_data, period_name)
             if period_start_col is None:
-                print(f"   ⚠️ Could not find column for period '{period_name}'")
+                print(f"   [WARN] Could not find column for period '{period_name}'")
                 continue
             
-            print(f"   ✅ Period '{period_name}' starts at Column {chr(65 + period_start_col)} ({period_start_col + 1})")
-            print(f"   ✅ Source sheet: {source_sheet}")
+            print(f"   [OK] Period '{period_name}' starts at Column {chr(65 + period_start_col)} ({period_start_col + 1})")
+            print(f"   [OK] Source sheet: {source_sheet}")
             
             for result in period_results:
                 prop_name = result.get('name') or ''
                 prop_row_1 = result.get('row')
                 if not prop_row_1:
-                    print(f"   ⚠️ Missing portfolio row for property '{prop_name}'")
+                    print(f"   [WARN] Missing portfolio row for property '{prop_name}'")
                     continue
                 prop_row = int(prop_row_1) - 1
                 
@@ -1292,7 +1369,7 @@ class PropertyCashFlowGenerator:
                     metric_col = self.find_metric_column(portfolio_data, metric_display, period_start_col)
                     
                     if metric_col is None:
-                        print(f"      ⚠️ Could not find column for '{metric_display}'")
+                        print(f"      [WARN] Could not find column for '{metric_display}'")
                         continue
                     
                     cell_ref = f"{chr(65 + metric_col)}{prop_row + 1}"
@@ -1313,7 +1390,7 @@ class PropertyCashFlowGenerator:
                             })
                             print(f"      {cell_ref}: {metric_display} = {formula}")
                         else:
-                            print(f"      ⚠️ Could not generate CFBDS formula (missing CFADS or DS column)")
+                            print(f"      [WARN] Could not generate CFBDS formula (missing CFADS or DS column)")
                     
                     elif metric_key == 'debt_service':
                         # Debt Service: Show cell references from same sheet
@@ -1345,7 +1422,7 @@ class PropertyCashFlowGenerator:
                             })
                             print(f"      {cell_ref}: {metric_display} = {formula}")
                         else:
-                            print(f"      ⚠️ Could not generate Debt Service formula")
+                            print(f"      [WARN] Could not generate Debt Service formula")
                     
                     else:
                         # Revenue, Opex, NOI, CFADS: ='Sheet'!Cell
@@ -1374,7 +1451,7 @@ class PropertyCashFlowGenerator:
                                 })
                                 print(f"      {cell_ref}: {metric_display} = {formula}")
                             else:
-                                print(f"      ⚠️ Could not generate formula for {metric_display}")
+                                print(f"      [WARN] Could not generate formula for {metric_display}")
 
                         elif col_letter and row_num:
                             formula = f"='{source_sheet}'!{col_letter}{row_num}"
@@ -1385,11 +1462,11 @@ class PropertyCashFlowGenerator:
                             })
                             print(f"      {cell_ref}: {metric_display} = {formula}")
                         else:
-                            print(f"      ⚠️ Could not generate formula for {metric_display}")
+                            print(f"      [WARN] Could not generate formula for {metric_display}")
                 
                 # Add yellow highlighting if needed
                 if needs_yellow:
-                    print(f"      🟨 Yellow highlight needed for row {prop_row + 1}")
+                    print(f"      [YELLOW] Yellow highlight needed for row {prop_row + 1}")
                     format_requests.append({
                         'row': prop_row,
                         'needs_yellow': True
@@ -1404,13 +1481,46 @@ class PropertyCashFlowGenerator:
             print("\n[DRY RUN] No changes written to sheet")
             return updates, format_requests
         
-        # Execute batch update with USER_ENTERED to process formulas
+        # Step 1: Clear all existing yellow highlights from data rows (always, start fresh)
+        print("\n   Clearing existing highlights from data rows...")
+        clear_requests = []
+        for col_range in [
+            (0, 9),   # A:I
+            (10, 16), # K:P
+            (17, 23), # R:W
+        ]:
+            clear_requests.append({
+                'repeatCell': {
+                    'range': {
+                        'sheetId': self.portfolio_ws.id,
+                        'startRowIndex': 4,  # Row 5 (0-based)
+                        'endRowIndex': 100,  # Up to row 100
+                        'startColumnIndex': col_range[0],
+                        'endColumnIndex': col_range[1],
+                    },
+                    'cell': {
+                        'userEnteredFormat': {
+                            'backgroundColor': {
+                                'red': 1.0,
+                                'green': 1.0,
+                                'blue': 1.0,
+                            }
+                        }
+                    },
+                    'fields': 'userEnteredFormat.backgroundColor',
+                }
+            })
+        
+        self.gc.open_by_key(self.portfolio_ws.spreadsheet_id).batch_update({'requests': clear_requests})
+        print(f"   [OK] Cleared existing highlights")
+        
+        # Step 2: Write formulas
         print("\n   Writing formulas to sheet...")
         if updates:
             self.portfolio_ws.batch_update(updates, value_input_option='USER_ENTERED')
-            print(f"   ✅ Wrote {len(updates)} formulas")
+            print(f"   [OK] Wrote {len(updates)} formulas")
         
-        # Apply yellow highlighting
+        # Step 3: Apply yellow highlighting (only if needed)
         if format_requests:
             print("\n   Applying yellow highlights...")
             # Build batch formatting requests manually to avoid gspread_formatting compatibility issues
@@ -1449,9 +1559,9 @@ class PropertyCashFlowGenerator:
                 # Use the spreadsheet object correctly for newer gspread API
                 self.gc.open_by_key(self.portfolio_ws.spreadsheet_id).batch_update({'requests': batch_requests})
             
-            print(f"   ✅ Applied {len(format_requests)} yellow highlights")
+            print(f"   [OK] Applied {len(format_requests)} yellow highlights")
         
-        print("\n✅ All updates written successfully!")
+        print("\n[OK] All updates written successfully!")
         
         return updates, format_requests
     
@@ -1494,9 +1604,9 @@ class PropertyCashFlowGenerator:
                     rev = m.get('revenue')
                     cfads = m.get('cfads')
                     if isinstance(rev, (int, float)) and isinstance(cfads, (int, float)):
-                        print(f"   ✅ {prop_name}: Rev ${rev:,.2f}, CFADS ${cfads:,.2f}")
+                        print(f"   [OK] {prop_name}: Rev ${rev:,.2f}, CFADS ${cfads:,.2f}")
                     else:
-                        print(f"   ✅ {prop_name}: metrics captured")
+                        print(f"   [OK] {prop_name}: metrics captured")
 
             all_results[period_key] = period_results
         
@@ -1594,7 +1704,7 @@ def main():
     if user_input == 'yes':
         print("\n   Writing to sheet...")
         generator.write_results_to_portfolio(results, dry_run=False)
-        print("\n✅ Automation complete!")
+        print("\n[OK] Automation complete!")
     else:
         print("\n   Cancelled. No changes made to sheet.")
 
