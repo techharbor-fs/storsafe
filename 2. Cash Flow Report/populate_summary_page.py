@@ -164,22 +164,32 @@ def main():
 
     # Get hard asset properties from Summary Page once (same for both reports)
     print("\n" + "=" * 80)
-    print("Finding hard asset properties in Summary Page...")
+    print("Finding all sections in Summary Page...")
     print("=" * 80)
 
     summary_col_b = summary_sheet.col_values(2)
     summary_col_a = summary_sheet.col_values(1)
-    properties_row = None
-
+    
+    # Find the first section header (Corporate, Laundromat, or Properties)
+    # to determine where data starts
+    first_data_row = None
+    section_headers = ['corporate', 'laundromat', 'propert']
+    
     for i, val in enumerate(summary_col_b, 1):
-        if val and isinstance(val, str) and 'propert' in normalize_text(val):
-            properties_row = i
-            print(f"[OK] Found 'Properties' header at row {i}")
-            break
-
-    if not properties_row:
-        print("[WARN] Could not find 'Properties' section in Summary Page - skipping")
-        return
+        if val and isinstance(val, str):
+            normalized = normalize_text(val)
+            for header in section_headers:
+                if header in normalized:
+                    first_data_row = i
+                    print(f"[OK] Found first section '{val}' at row {i}")
+                    break
+            if first_data_row:
+                break
+    
+    if not first_data_row:
+        # Fallback: start from row 4 (after typical header rows)
+        first_data_row = 4
+        print(f"[WARN] Could not find section headers, starting from row {first_data_row}")
 
     # Process both Monthly and YTD reports
     for idx, (report_type, config) in enumerate(REPORT_CONFIGS.items()):
@@ -322,66 +332,84 @@ def main():
         print(f"[OK] Found {len(property_code_map)} property codes in source sheet")
         
         # ========================================================================
-        # PHASE 4: MATCH PROPERTIES AND BUILD FORMULAS
+        # PHASE 4: FIND ALL PROPERTY ROWS AND MATCH TO SOURCE
         # ========================================================================
         
         print("\n" + "-" * 80)
-        print(f"Building formulas for {report_type} columns...")
+        print(f"Finding all property rows for {report_type} columns...")
         print("-" * 80)
         
-        properties_to_update = []
+        # Collect ALL property rows (rows with property code in column A)
+        all_property_rows = []  # All rows with a property code (for clearing)
+        properties_to_update = []  # Only rows that exist in source (for formulas)
         
-        for row_idx in range(properties_row + 1, len(summary_col_a) + 1):
+        consecutive_empty = 0
+        for row_idx in range(first_data_row + 1, len(summary_col_a) + 1):
             if row_idx > len(summary_col_a):
                 break
             
             property_code = summary_col_a[row_idx - 1] if row_idx <= len(summary_col_a) else ""
             property_name = summary_col_b[row_idx - 1] if row_idx <= len(summary_col_b) else ""
             
-            # Stop if both columns are empty
+            # Track consecutive empty rows - stop after 5 in a row (end of data)
             if not property_code and not property_name:
-                break
+                consecutive_empty += 1
+                if consecutive_empty >= 5:
+                    break
+                continue
+            else:
+                consecutive_empty = 0
             
-            # Skip rows where column A is empty
-            if not property_code or not isinstance(property_code, str):
+            # Skip section headers (Corporate, Laundromat, Properties, TOTAL, etc.)
+            # These have names in column B but are not individual properties
+            name_lower = (property_name or "").strip().lower() if isinstance(property_name, str) else ""
+            section_keywords = ['corporate', 'laundromat', 'properties', 'total', 'dre jv']
+            is_section_header = any(kw in name_lower for kw in section_keywords)
+            
+            if is_section_header:
                 continue
             
-            property_code = property_code.strip().lower()
-            
-            # Check if this property exists in source sheet
-            if property_code in property_code_map:
-                properties_to_update.append((row_idx, property_code, property_name))
+            # If column B has a name but column A is empty, still include for clearing
+            # (This catches rows like EP Legacy, Elmdale Holdings, SSSM, Happy Life)
+            if property_name and isinstance(property_name, str) and property_name.strip():
+                property_code_clean = property_code.strip().lower() if property_code and isinstance(property_code, str) else ""
+                
+                # Add to all_property_rows (for clearing)
+                all_property_rows.append((row_idx, property_code_clean, property_name))
+                
+                # Check if this property exists in source sheet (for formulas)
+                # Only add to properties_to_update if we have a valid code that exists in source
+                if property_code_clean and property_code_clean in property_code_map:
+                    properties_to_update.append((row_idx, property_code_clean, property_name))
         
-        print(f"[OK] Found {len(properties_to_update)} properties to update")
+        print(f"[OK] Found {len(all_property_rows)} total property rows")
+        print(f"[OK] Found {len(properties_to_update)} properties with source data")
         
         # ========================================================================
-        # CLEAR OLD FORMULAS IN TARGET COLUMNS FIRST
+        # CLEAR ALL PROPERTY ROWS (removes #REF! from properties not in source)
         # ========================================================================
         
         print("\n" + "-" * 80)
-        print(f"Clearing old formulas in {report_type} columns...")
+        print(f"Clearing ALL property cells in {report_type} columns...")
         print("-" * 80)
         
-        # Determine the range to clear based on properties found
-        if properties_to_update:
-            first_row = properties_to_update[0][0]  # First property row
-            last_row = properties_to_update[-1][0]  # Last property row
-            
-            # Clear the three columns for this report type
-            clear_ranges = [
-                f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_NOI)}{first_row}:{col_number_to_letter(COL_NOI)}{last_row}",
-                f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_NI)}{first_row}:{col_number_to_letter(COL_NI)}{last_row}",
-                f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_ACF)}{first_row}:{col_number_to_letter(COL_ACF)}{last_row}",
-            ]
+        # Clear ALL property rows (not just ones we're updating)
+        # This removes #REF! errors from properties that don't exist in current source
+        if all_property_rows:
+            clear_cells = []
+            for row_num, property_code, property_name in all_property_rows:
+                clear_cells.append(f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_NOI)}{row_num}")
+                clear_cells.append(f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_NI)}{row_num}")
+                clear_cells.append(f"'{SUMMARY_SHEET_NAME}'!{col_number_to_letter(COL_ACF)}{row_num}")
             
             try:
-                for clear_range in clear_ranges:
-                    service.spreadsheets().values().clear(
-                        spreadsheetId=SPREADSHEET_ID,
-                        range=clear_range
-                    ).execute()
+                # Use batchClear for multiple non-contiguous cells
+                service.spreadsheets().values().batchClear(
+                    spreadsheetId=SPREADSHEET_ID,
+                    body={'ranges': clear_cells}
+                ).execute()
                 
-                print(f"[OK] Cleared columns {chr(64+COL_NOI)}, {chr(64+COL_NI)}, {chr(64+COL_ACF)} (rows {first_row}-{last_row})")
+                print(f"[OK] Cleared {len(clear_cells)} cells ({len(all_property_rows)} property rows x 3 columns)")
                 time.sleep(2)  # Small delay after clearing
                 
             except Exception as e:

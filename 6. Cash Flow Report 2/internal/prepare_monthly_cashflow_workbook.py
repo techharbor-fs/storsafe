@@ -460,13 +460,19 @@ def _copy_tabs_from_previous_month(
                 print(f"  [DRY RUN] Would copy tab '{tab_title}' from previous month")
                 copied_tabs.append(tab_title)
             else:
-                # Check if tab already exists in target
+                # Delete existing tab if present (replace with fresh copy from previous month)
                 existing_titles = [ws.title for ws in target_ss.worksheets()]
                 if tab_title in existing_titles:
-                    print(f"  [SKIP] Tab '{tab_title}' already exists in target workbook")
-                    continue
+                    try:
+                        old_ws = target_ss.worksheet(tab_title)
+                        target_ss.del_worksheet(old_ws)
+                        print(f"  [REPLACE] Deleted existing '{tab_title}' to replace with fresh copy")
+                        time.sleep(1)  # Brief pause after delete
+                    except Exception as e:
+                        print(f"  [WARN] Could not delete existing '{tab_title}': {e}")
                 
                 # Clean up any leftover "Copy of" tabs from previous failed attempts
+                existing_titles = [ws.title for ws in target_ss.worksheets()]  # Refresh list
                 copy_of_title = f"Copy of {tab_title}"
                 if copy_of_title in existing_titles:
                     try:
@@ -476,7 +482,7 @@ def _copy_tabs_from_previous_month(
                     except Exception:
                         pass
 
-                # Copy the tab
+                # Copy the tab from previous month (always get fresh copy with intact formulas)
                 src_ws = prev_ss.worksheet(tab_title)
                 copy_result = src_ws.copy_to(target_ss.id)
 
