@@ -11,10 +11,8 @@ from pathlib import Path
 from typing import Iterable
 
 CURRENT_DIR = Path(__file__).resolve().parent
-REPORTS_BASE = CURRENT_DIR / ".Reports"
-HELPER_DIR = CURRENT_DIR / ".helper_artifacts"
-if str(HELPER_DIR) not in sys.path:
-    sys.path.insert(0, str(HELPER_DIR))
+PROJECT_ROOT = CURRENT_DIR.parent  # 5. SMS Reports/
+REPORTS_BASE = PROJECT_ROOT / ".Reports"
 
 from generate_distribution_report import generate_distribution_report  # type: ignore
 

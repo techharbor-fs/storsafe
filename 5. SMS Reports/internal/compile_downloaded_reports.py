@@ -239,10 +239,11 @@ def main():
     
     args = parser.parse_args()
     
-    # Resolve folder path
+    # Resolve folder path relative to project root (parent of internal/)
     folder = Path(args.reports_folder)
     if not folder.is_absolute():
-        folder = Path(__file__).parent / folder
+        project_root = Path(__file__).parent.parent
+        folder = project_root / folder
     
     if not folder.exists():
         print(f"ERROR: Folder not found: {folder}")
