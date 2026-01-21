@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Files{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-8">
+    <nav class="flex items-center gap-2 text-sm mb-4">
+        <a href="{{ url_for('dashboard.index') }}" class="text-th-azure hover:underline">Dashboard</a>
+        <span class="text-th-gray-blue">/</span>
+        <span class="text-th-gray-blue">Upload Files</span>
+    </nav>
+    <h1 class="text-2xl font-semibold text-th-dark-blue">Upload Files</h1>
+    <p class="text-th-gray-blue mt-1">Upload bank statement PDF and Yardi Excel file to start reconciliation</p>
+</div>
+
+<!-- Upload Form -->
+<form action="{{ url_for('upload.index') }}" method="POST" enctype="multipart/form-data" 
+      class="max-w-2xl" x-data="uploadForm()">
+    
+    <!-- Property & Period Selection -->
+    <div class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">Property & Period</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <!-- Property Select -->
+            <div class="space-y-1.5">
+                <label class="text-sm font-medium text-th-dark-blue">Property</label>
+                {% if properties %}
+                <select name="property_name" x-model="selectedProperty"
+                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
+                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
+                    <option value="">Select existing property...</option>
+                    {% for prop in properties %}
+                    <option value="{{ prop.name }}">{{ prop.name }}</option>
+                    {% endfor %}
+                    <option value="__new__">+ Add new property</option>
+                </select>
+                {% else %}
+                <input type="text" name="new_property" placeholder="Enter property name" required
+                       class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue
+                              focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
+                {% endif %}
+            </div>
+            
+            <!-- New Property (shown when "Add new" selected) -->
+            {% if properties %}
+            <div class="space-y-1.5" x-show="selectedProperty === '__new__'" x-transition>
+                <label class="text-sm font-medium text-th-dark-blue">New Property Name</label>
+                <input type="text" name="new_property" placeholder="e.g., Madison"
+                       class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue
+                              focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+            <!-- Month -->
+            <div class="space-y-1.5">
+                <label class="text-sm font-medium text-th-dark-blue">Month</label>
+                <select name="month" required
+                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
+                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
+                    {% for num, name in months %}
+                    <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Year -->
+            <div class="space-y-1.5">
+                <label class="text-sm font-medium text-th-dark-blue">Year</label>
+                <select name="year" required
+                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
+                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
+                    {% for year in years %}
+                    <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- File Uploads -->
+    <div class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">Files</h2>
+        
+        <div class="space-y-4">
+            <!-- Bank Statement PDF -->
+            <div>
+                <label class="text-sm font-medium text-th-dark-blue block mb-2">Bank Statement (PDF)</label>
+                <div class="border-2 border-dashed border-th-gray-blue/30 rounded-xl p-6 text-center
+                            hover:border-th-azure hover:bg-th-azure/5 transition-colors cursor-pointer"
+                     @click="$refs.bankPdf.click()"
+                     @dragover.prevent="bankDragOver = true"
+                     @dragleave.prevent="bankDragOver = false"
+                     @drop.prevent="handleBankDrop($event)"
+                     :class="{ 'border-th-azure bg-th-azure/5': bankDragOver }">
+                    <input type="file" name="bank_pdf" accept=".pdf" class="hidden" x-ref="bankPdf"
+                           @change="bankFileName = $event.target.files[0]?.name">
+                    <div x-show="!bankFileName">
+                        <div class="w-12 h-12 mx-auto bg-th-azure/10 rounded-full flex items-center justify-center mb-3">
+                            <svg class="w-6 h-6 text-th-azure" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                            </svg>
+                        </div>
+                        <p class="font-medium text-th-dark-blue">Drop PDF here or click to upload</p>
+                        <p class="text-sm text-th-gray-blue mt-1">Notre Dame FCU statement PDF</p>
+                    </div>
+                    <div x-show="bankFileName" class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-medium text-th-dark-blue" x-text="bankFileName"></span>
+                        <button type="button" @click.stop="bankFileName = ''; $refs.bankPdf.value = ''" 
+                                class="text-th-gray-blue hover:text-th-error">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Yardi Excel -->
+            <div>
+                <label class="text-sm font-medium text-th-dark-blue block mb-2">Yardi Bank Rec (Excel)</label>
+                <div class="border-2 border-dashed border-th-gray-blue/30 rounded-xl p-6 text-center
+                            hover:border-th-azure hover:bg-th-azure/5 transition-colors cursor-pointer"
+                     @click="$refs.yardiExcel.click()"
+                     @dragover.prevent="yardiDragOver = true"
+                     @dragleave.prevent="yardiDragOver = false"
+                     @drop.prevent="handleYardiDrop($event)"
+                     :class="{ 'border-th-azure bg-th-azure/5': yardiDragOver }">
+                    <input type="file" name="yardi_excel" accept=".xlsx,.xls" class="hidden" x-ref="yardiExcel"
+                           @change="yardiFileName = $event.target.files[0]?.name">
+                    <div x-show="!yardiFileName">
+                        <div class="w-12 h-12 mx-auto bg-th-success/10 rounded-full flex items-center justify-center mb-3">
+                            <svg class="w-6 h-6 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <p class="font-medium text-th-dark-blue">Drop Excel here or click to upload</p>
+                        <p class="text-sm text-th-gray-blue mt-1">Bank_Rec*.xlsx from Yardi</p>
+                    </div>
+                    <div x-show="yardiFileName" class="flex items-center justify-center gap-3">
+                        <svg class="w-8 h-8 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span class="font-medium text-th-dark-blue" x-text="yardiFileName"></span>
+                        <button type="button" @click.stop="yardiFileName = ''; $refs.yardiExcel.value = ''" 
+                                class="text-th-gray-blue hover:text-th-error">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Submit -->
+    <div class="flex items-center justify-end gap-4">
+        <a href="{{ url_for('dashboard.index') }}" 
+           class="px-4 py-2 text-th-blue font-medium hover:text-th-dark-blue transition-colors">
+            Cancel
+        </a>
+        <button type="submit" 
+                class="bg-th-azure hover:bg-th-azure-dark text-white font-semibold px-6 py-2.5 rounded-lg transition-colors
+                       disabled:bg-th-gray-blue disabled:cursor-not-allowed"
+                :disabled="!bankFileName && !yardiFileName">
+            Upload & Process
+        </button>
+    </div>
+</form>
+
+<script>
+function uploadForm() {
+    return {
+        selectedProperty: '',
+        bankFileName: '',
+        yardiFileName: '',
+        bankDragOver: false,
+        yardiDragOver: false,
+        
+        handleBankDrop(e) {
+            this.bankDragOver = false;
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.pdf')) {
+                this.$refs.bankPdf.files = e.dataTransfer.files;
+                this.bankFileName = file.name;
+            }
+        },
+        
+        handleYardiDrop(e) {
+            this.yardiDragOver = false;
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                this.$refs.yardiExcel.files = e.dataTransfer.files;
+                this.yardiFileName = file.name;
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

@@ -30,7 +30,11 @@ logs/
 !.helper_artifacts/
 .helper_artifacts/*
 !.helper_artifacts/.gitkeep
-tests/
+**/.pytest_cache/
+**/test_output/
+
+# SQLite Databases (local dev data)
+*.db
 
 # Report Compiler Data
 0. Report Compiler/Input/
