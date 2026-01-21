@@ -3,13 +3,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import smtplib
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Iterable
+
+from dotenv import load_dotenv
+
+# Load .env from project root (Storsafe folder)
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 from generate_monthly_distribution_reports import (  # type: ignore
     PROPERTY_CONFIG,
@@ -138,11 +144,68 @@ RECIPIENTS: dict[str, dict[str, list[str]]] = {
 }
 
 
-def load_credentials(credentials_file: Path) -> tuple[str, str]:
-    """Load email credentials from JSON file."""
-    with open(credentials_file) as f:
-        creds = json.load(f)
-    return creds["user"], creds["pass"]
+def load_credentials() -> tuple[str, str]:
+    """Load email credentials from environment variables."""
+    user = os.getenv("SMS_EMAIL_USER")
+    password = os.getenv("SMS_EMAIL_PASS")
+    
+    if not user or not password:
+        raise ValueError(
+            "Email credentials not found. Set SMS_EMAIL_USER and SMS_EMAIL_PASS in .env file.\n"
+            "Expected location: C:\\Users\\jvill\\techharbor-fs\\Storsafe\\.env"
+        )
+    
+    return user, password
+
+
+# --- Sent Log Functions (Duplicate Prevention) ---
+
+SENT_LOG_FILENAME = ".email_sent_log.json"
+
+
+def get_sent_log_path(reports_folder: Path) -> Path:
+    """Get the path to the sent log file for a month folder."""
+    return reports_folder / SENT_LOG_FILENAME
+
+
+def load_sent_log(reports_folder: Path) -> dict:
+    """Load the sent log for a month folder. Returns empty dict if not found."""
+    log_path = get_sent_log_path(reports_folder)
+    if log_path.exists():
+        with open(log_path, "r") as f:
+            return json.load(f)
+    return {}
+
+
+def save_sent_log(reports_folder: Path, log_data: dict) -> None:
+    """Save the sent log for a month folder."""
+    log_path = get_sent_log_path(reports_folder)
+    with open(log_path, "w") as f:
+        json.dump(log_data, f, indent=2)
+
+
+def record_sent_email(reports_folder: Path, property_key: str, subject: str) -> None:
+    """Record that an email was sent for a property."""
+    log = load_sent_log(reports_folder)
+    log[property_key] = {
+        "subject": subject,
+        "sent_at": datetime.now().isoformat(),
+    }
+    save_sent_log(reports_folder, log)
+
+
+def check_already_sent(reports_folder: Path, jobs: list) -> list[tuple[str, str]]:
+    """
+    Check if any emails were already sent.
+    Returns list of (property_name, sent_at) for properties that were already sent.
+    """
+    log = load_sent_log(reports_folder)
+    already_sent = []
+    for job in jobs:
+        if job.property_key in log:
+            sent_info = log[job.property_key]
+            already_sent.append((job.property_name, sent_info.get("sent_at", "unknown")))
+    return already_sent
 
 
 @dataclass
@@ -345,6 +408,9 @@ def main() -> None:
         print("No emails to process. Ensure financial and distribution workbooks exist.")
         return
     
+    # Check for already-sent emails (duplicate prevention)
+    already_sent = check_already_sent(reports_folder, jobs)
+    
     # Show summary before sending
     print(f"\n=== Email Summary ({len(jobs)} emails) ===\n")
     for job in jobs:
@@ -353,13 +419,35 @@ def main() -> None:
         print(f"    Attachments: {', '.join(a.name for a in job.attachments)}")
     print()
     
+    # Warn if emails were already sent
+    if already_sent:
+        print("=" * 50)
+        print("WARNING: Some emails were already sent!")
+        print("=" * 50)
+        for prop_name, sent_at in already_sent:
+            # Format the timestamp nicely
+            try:
+                dt = datetime.fromisoformat(sent_at)
+                formatted = dt.strftime("%Y-%m-%d %I:%M %p")
+            except:
+                formatted = sent_at
+            print(f"  - {prop_name}: sent on {formatted}")
+        print()
+    
     # Determine send mode - CLI flag or interactive
     if args.send:
         should_send = True
+        # If using --send flag and emails were already sent, require confirmation
+        if already_sent:
+            print("Use interactive mode to re-send (remove --send flag).")
+            return
     else:
         print("What would you like to do?\n")
         print("  1. Dry run (preview only, no emails sent)")
-        print("  2. Send emails")
+        if already_sent:
+            print("  2. Re-send emails (CAUTION: duplicates will be sent)")
+        else:
+            print("  2. Send emails")
         print("  0. Cancel\n")
         
         while True:
@@ -371,21 +459,26 @@ def main() -> None:
                 should_send = False
                 break
             elif choice == "2":
+                if already_sent:
+                    confirm = input("Type 'yes' to confirm re-sending: ").strip().lower()
+                    if confirm != "yes":
+                        print("Cancelled.")
+                        return
                 should_send = True
                 break
             else:
                 print("Please enter 0, 1, or 2")
     
     if should_send:
-        creds_file = Path(__file__).parent / "email_credentials.json"
-        username, password = load_credentials(creds_file)
+        username, password = load_credentials()
         print("\nSending emails...\n")
         
         for job in jobs:
             send_via_gmail(job, BODY_TEMPLATE, username, password)
+            record_sent_email(reports_folder, job.property_key, job.subject)
             print(f"[SENT] {job.subject}")
         
-        print(f"\n✓ All {len(jobs)} emails sent successfully.")
+        print(f"\n[OK] All {len(jobs)} emails sent successfully.")
     else:
         print("\n--- DRY RUN (No emails sent) ---\n")
         for job in jobs:

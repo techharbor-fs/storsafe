@@ -1,0 +1,8 @@
+# Bank Balances for December 2025
+# Format: Property: Amount
+# Lines starting with # are comments
+
+Altoona: 35767.41
+Cary: 60419.11
+Crystal Lake: 36101.11
+NFSS: 4320.38
