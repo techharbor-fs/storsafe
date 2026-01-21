@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Upload Files{% endblock %}
+{% block title %}Upload Folder{% endblock %}
 
 {% block content %}
 <!-- Header -->
@@ -8,201 +8,347 @@
     <nav class="flex items-center gap-2 text-sm mb-4">
         <a href="{{ url_for('dashboard.index') }}" class="text-th-azure hover:underline">Dashboard</a>
         <span class="text-th-gray-blue">/</span>
-        <span class="text-th-gray-blue">Upload Files</span>
+        <span class="text-th-gray-blue">Upload Folder</span>
     </nav>
-    <h1 class="text-2xl font-semibold text-th-dark-blue">Upload Files</h1>
-    <p class="text-th-gray-blue mt-1">Upload bank statement PDF and Yardi Excel file to start reconciliation</p>
+    <h1 class="text-2xl font-semibold text-th-dark-blue">Upload Reconciliation Folder</h1>
+    <p class="text-th-gray-blue mt-1">Select a monthly folder (e.g., "12. Dec") containing bank PDF and Yardi Excel</p>
 </div>
 
-<!-- Upload Form -->
-<form action="{{ url_for('upload.index') }}" method="POST" enctype="multipart/form-data" 
-      class="max-w-2xl" x-data="uploadForm()">
+<!-- Upload Form with Alpine.js -->
+<div x-data="folderUpload()" class="max-w-3xl">
     
-    <!-- Property & Period Selection -->
+    <!-- Step 1: Folder Selection -->
     <div class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
-        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">Property & Period</h2>
+        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-th-azure text-white text-sm mr-2">1</span>
+            Select Folder
+        </h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <!-- Property Select -->
+        <div class="border-2 border-dashed border-th-gray-blue/30 rounded-xl p-8 text-center
+                    hover:border-th-azure hover:bg-th-azure/5 transition-colors cursor-pointer"
+             @click="$refs.folderInput.click()"
+             :class="{ 'border-th-azure bg-th-azure/5': folderName }">
+            
+            <input type="file" webkitdirectory directory multiple 
+                   class="hidden" x-ref="folderInput"
+                   @change="handleFolderSelect($event)">
+            
+            <div x-show="!folderName">
+                <div class="w-16 h-16 mx-auto bg-th-azure/10 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-th-azure" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                </div>
+                <p class="font-medium text-th-dark-blue text-lg">Click to select folder</p>
+                <p class="text-sm text-th-gray-blue mt-2">Select a monthly folder like "11. Nov" or "12. Dec"</p>
+            </div>
+            
+            <div x-show="folderName" class="text-left">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-12 h-12 bg-th-success/10 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-th-dark-blue text-lg" x-text="folderName"></p>
+                        <p class="text-sm text-th-gray-blue">
+                            Expected period: <span class="font-medium text-th-azure" x-text="expectedPeriod || 'Unknown'"></span>
+                        </p>
+                    </div>
+                    <button type="button" @click.stop="clearFolder()" 
+                            class="ml-auto text-th-gray-blue hover:text-th-error p-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Step 2: Files Found (shown after folder selection) -->
+    <div x-show="folderName" x-transition class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-th-azure text-white text-sm mr-2">2</span>
+            Files Found
+        </h2>
+        
+        <div class="space-y-3">
+            <!-- Bank PDF -->
+            <div class="flex items-center gap-3 p-3 rounded-lg"
+                 :class="bankPdf ? 'bg-th-success/5 border border-th-success/20' : 'bg-th-error/5 border border-th-error/20'">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                     :class="bankPdf ? 'bg-th-success/10' : 'bg-th-error/10'">
+                    <svg x-show="bankPdf" class="w-5 h-5 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg x-show="!bankPdf" class="w-5 h-5 text-th-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium" :class="bankPdf ? 'text-th-dark-blue' : 'text-th-error'">
+                        Bank Statement (PDF)
+                    </p>
+                    <p class="text-sm" :class="bankPdf ? 'text-th-gray-blue' : 'text-th-error/70'"
+                       x-text="bankPdf ? bankPdf.name : 'No PDF file found'"></p>
+                </div>
+            </div>
+            
+            <!-- Yardi Excel -->
+            <div class="flex items-center gap-3 p-3 rounded-lg"
+                 :class="yardiExcel ? 'bg-th-success/5 border border-th-success/20' : 'bg-th-error/5 border border-th-error/20'">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                     :class="yardiExcel ? 'bg-th-success/10' : 'bg-th-error/10'">
+                    <svg x-show="yardiExcel" class="w-5 h-5 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <svg x-show="!yardiExcel" class="w-5 h-5 text-th-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <p class="font-medium" :class="yardiExcel ? 'text-th-dark-blue' : 'text-th-error'">
+                        Yardi Bank Rec (Excel)
+                    </p>
+                    <p class="text-sm" :class="yardiExcel ? 'text-th-gray-blue' : 'text-th-error/70'"
+                       x-text="yardiExcel ? yardiExcel.name : 'No Excel file found'"></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Warning if files missing -->
+        <div x-show="!bankPdf || !yardiExcel" class="mt-4 p-3 bg-th-warning/10 border border-th-warning/20 rounded-lg">
+            <p class="text-sm text-th-warning font-medium">
+                <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                Missing required files. Please ensure the folder contains both a PDF and Excel file.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Step 3: Property Override (optional) -->
+    <div x-show="folderName && bankPdf && yardiExcel" x-transition 
+         class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
+        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-th-azure text-white text-sm mr-2">3</span>
+            Property (Optional Override)
+        </h2>
+        
+        <p class="text-sm text-th-gray-blue mb-3">
+            Property will be auto-detected from files. Only change if detection is wrong.
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
                 <label class="text-sm font-medium text-th-dark-blue">Property</label>
-                {% if properties %}
-                <select name="property_name" x-model="selectedProperty"
+                <select x-model="selectedProperty"
                         class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
                                focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
-                    <option value="">Select existing property...</option>
+                    <option value="">Auto-detect from files</option>
                     {% for prop in properties %}
                     <option value="{{ prop.name }}">{{ prop.name }}</option>
                     {% endfor %}
                     <option value="__new__">+ Add new property</option>
                 </select>
-                {% else %}
-                <input type="text" name="new_property" placeholder="Enter property name" required
-                       class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue
-                              focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
-                {% endif %}
             </div>
             
-            <!-- New Property (shown when "Add new" selected) -->
-            {% if properties %}
             <div class="space-y-1.5" x-show="selectedProperty === '__new__'" x-transition>
                 <label class="text-sm font-medium text-th-dark-blue">New Property Name</label>
-                <input type="text" name="new_property" placeholder="e.g., Madison"
+                <input type="text" x-model="newPropertyName" placeholder="e.g., Madison"
                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue
                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
             </div>
-            {% endif %}
-        </div>
-        
-        <div class="grid grid-cols-2 gap-4">
-            <!-- Month -->
-            <div class="space-y-1.5">
-                <label class="text-sm font-medium text-th-dark-blue">Month</label>
-                <select name="month" required
-                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
-                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
-                    {% for num, name in months %}
-                    <option value="{{ num }}" {% if num == current_month %}selected{% endif %}>{{ name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <!-- Year -->
-            <div class="space-y-1.5">
-                <label class="text-sm font-medium text-th-dark-blue">Year</label>
-                <select name="year" required
-                        class="w-full px-4 py-2.5 rounded-lg border border-th-gray-blue/30 text-th-blue bg-white
-                               focus:border-th-azure focus:ring-2 focus:ring-th-azure/20 transition-colors">
-                    {% for year in years %}
-                    <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
-                    {% endfor %}
-                </select>
-            </div>
         </div>
     </div>
     
-    <!-- File Uploads -->
-    <div class="bg-white rounded-xl border border-th-gray-blue/20 shadow-th-sm p-6 mb-6">
-        <h2 class="text-lg font-semibold text-th-dark-blue mb-4">Files</h2>
-        
-        <div class="space-y-4">
-            <!-- Bank Statement PDF -->
-            <div>
-                <label class="text-sm font-medium text-th-dark-blue block mb-2">Bank Statement (PDF)</label>
-                <div class="border-2 border-dashed border-th-gray-blue/30 rounded-xl p-6 text-center
-                            hover:border-th-azure hover:bg-th-azure/5 transition-colors cursor-pointer"
-                     @click="$refs.bankPdf.click()"
-                     @dragover.prevent="bankDragOver = true"
-                     @dragleave.prevent="bankDragOver = false"
-                     @drop.prevent="handleBankDrop($event)"
-                     :class="{ 'border-th-azure bg-th-azure/5': bankDragOver }">
-                    <input type="file" name="bank_pdf" accept=".pdf" class="hidden" x-ref="bankPdf"
-                           @change="bankFileName = $event.target.files[0]?.name">
-                    <div x-show="!bankFileName">
-                        <div class="w-12 h-12 mx-auto bg-th-azure/10 rounded-full flex items-center justify-center mb-3">
-                            <svg class="w-6 h-6 text-th-azure" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                            </svg>
-                        </div>
-                        <p class="font-medium text-th-dark-blue">Drop PDF here or click to upload</p>
-                        <p class="text-sm text-th-gray-blue mt-1">Notre Dame FCU statement PDF</p>
-                    </div>
-                    <div x-show="bankFileName" class="flex items-center justify-center gap-3">
-                        <svg class="w-8 h-8 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span class="font-medium text-th-dark-blue" x-text="bankFileName"></span>
-                        <button type="button" @click.stop="bankFileName = ''; $refs.bankPdf.value = ''" 
-                                class="text-th-gray-blue hover:text-th-error">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Yardi Excel -->
-            <div>
-                <label class="text-sm font-medium text-th-dark-blue block mb-2">Yardi Bank Rec (Excel)</label>
-                <div class="border-2 border-dashed border-th-gray-blue/30 rounded-xl p-6 text-center
-                            hover:border-th-azure hover:bg-th-azure/5 transition-colors cursor-pointer"
-                     @click="$refs.yardiExcel.click()"
-                     @dragover.prevent="yardiDragOver = true"
-                     @dragleave.prevent="yardiDragOver = false"
-                     @drop.prevent="handleYardiDrop($event)"
-                     :class="{ 'border-th-azure bg-th-azure/5': yardiDragOver }">
-                    <input type="file" name="yardi_excel" accept=".xlsx,.xls" class="hidden" x-ref="yardiExcel"
-                           @change="yardiFileName = $event.target.files[0]?.name">
-                    <div x-show="!yardiFileName">
-                        <div class="w-12 h-12 mx-auto bg-th-success/10 rounded-full flex items-center justify-center mb-3">
-                            <svg class="w-6 h-6 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                      d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                        </div>
-                        <p class="font-medium text-th-dark-blue">Drop Excel here or click to upload</p>
-                        <p class="text-sm text-th-gray-blue mt-1">Bank_Rec*.xlsx from Yardi</p>
-                    </div>
-                    <div x-show="yardiFileName" class="flex items-center justify-center gap-3">
-                        <svg class="w-8 h-8 text-th-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        <span class="font-medium text-th-dark-blue" x-text="yardiFileName"></span>
-                        <button type="button" @click.stop="yardiFileName = ''; $refs.yardiExcel.value = ''" 
-                                class="text-th-gray-blue hover:text-th-error">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Submit -->
-    <div class="flex items-center justify-end gap-4">
+    <!-- Submit Button -->
+    <div x-show="folderName" x-transition class="flex items-center justify-end gap-4">
         <a href="{{ url_for('dashboard.index') }}" 
            class="px-4 py-2 text-th-blue font-medium hover:text-th-dark-blue transition-colors">
             Cancel
         </a>
-        <button type="submit" 
+        <button type="button" @click="submitFolder()"
                 class="bg-th-azure hover:bg-th-azure-dark text-white font-semibold px-6 py-2.5 rounded-lg transition-colors
-                       disabled:bg-th-gray-blue disabled:cursor-not-allowed"
-                :disabled="!bankFileName && !yardiFileName">
-            Upload & Process
+                       disabled:bg-th-gray-blue disabled:cursor-not-allowed flex items-center gap-2"
+                :disabled="!bankPdf || !yardiExcel || isSubmitting">
+            <svg x-show="isSubmitting" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span x-text="isSubmitting ? 'Processing...' : 'Process Folder'"></span>
         </button>
     </div>
-</form>
+    
+    <!-- Hidden form for actual submission -->
+    <form x-ref="uploadForm" action="{{ url_for('upload.upload_folder') }}" method="POST" enctype="multipart/form-data" class="hidden">
+        <input type="hidden" name="folder_name" x-model="folderName">
+        <input type="hidden" name="expected_month" x-model="expectedMonth">
+        <input type="hidden" name="expected_year" x-model="expectedYear">
+        <input type="hidden" name="property_name" :value="selectedProperty === '__new__' ? newPropertyName : selectedProperty">
+        <input type="file" name="bank_pdf" x-ref="bankPdfInput">
+        <input type="file" name="yardi_excel" x-ref="yardiExcelInput">
+    </form>
+</div>
 
 <script>
-function uploadForm() {
+function folderUpload() {
     return {
+        folderName: '',
+        folderPath: '',
+        expectedMonth: null,
+        expectedYear: null,
+        expectedPeriod: '',
+        bankPdf: null,
+        yardiExcel: null,
         selectedProperty: '',
-        bankFileName: '',
-        yardiFileName: '',
-        bankDragOver: false,
-        yardiDragOver: false,
+        newPropertyName: '',
+        isSubmitting: false,
+        allFiles: [],
         
-        handleBankDrop(e) {
-            this.bankDragOver = false;
-            const file = e.dataTransfer.files[0];
-            if (file && file.name.endsWith('.pdf')) {
-                this.$refs.bankPdf.files = e.dataTransfer.files;
-                this.bankFileName = file.name;
+        // Month name mappings
+        monthNames: {
+            'jan': 1, 'january': 1,
+            'feb': 2, 'february': 2,
+            'mar': 3, 'march': 3,
+            'apr': 4, 'april': 4,
+            'may': 5,
+            'jun': 6, 'june': 6,
+            'jul': 7, 'july': 7,
+            'aug': 8, 'august': 8,
+            'sep': 9, 'sept': 9, 'september': 9,
+            'oct': 10, 'october': 10,
+            'nov': 11, 'november': 11,
+            'dec': 12, 'december': 12
+        },
+        
+        monthLabels: ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'],
+        
+        handleFolderSelect(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+            
+            // Get folder name from first file's path
+            const firstFile = files[0];
+            const pathParts = firstFile.webkitRelativePath.split('/');
+            this.folderName = pathParts[0];
+            this.allFiles = files;
+            
+            // Parse expected month from folder name (e.g., "12. Dec" or "11. Nov")
+            this.parseExpectedPeriod(this.folderName);
+            
+            // Find PDF and Excel files
+            this.bankPdf = files.find(f => f.name.toLowerCase().endsWith('.pdf'));
+            this.yardiExcel = files.find(f => 
+                (f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'))
+                && f.name.toLowerCase().includes('bank')
+            );
+            
+            // If no bank_rec excel found, try any Excel
+            if (!this.yardiExcel) {
+                this.yardiExcel = files.find(f => 
+                    f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls')
+                );
             }
         },
         
-        handleYardiDrop(e) {
-            this.yardiDragOver = false;
-            const file = e.dataTransfer.files[0];
-            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-                this.$refs.yardiExcel.files = e.dataTransfer.files;
-                this.yardiFileName = file.name;
+        parseExpectedPeriod(folderName) {
+            // Try patterns like "12. Dec", "11. Nov", "12 Dec", "December 2025"
+            const patterns = [
+                /(\d{1,2})\.\s*([a-zA-Z]+)/,  // "12. Dec"
+                /(\d{1,2})\s+([a-zA-Z]+)/,     // "12 Dec"
+                /([a-zA-Z]+)\s*(\d{4})/,       // "December 2025"
+                /([a-zA-Z]+)/                   // Just "December"
+            ];
+            
+            for (const pattern of patterns) {
+                const match = folderName.match(pattern);
+                if (match) {
+                    // Check if first group is number or text
+                    if (/^\d+$/.test(match[1])) {
+                        // Pattern like "12. Dec"
+                        this.expectedMonth = parseInt(match[1]);
+                        const monthText = match[2].toLowerCase();
+                        if (this.monthNames[monthText]) {
+                            this.expectedMonth = this.monthNames[monthText];
+                        }
+                    } else {
+                        // Pattern like "December" or "December 2025"
+                        const monthText = match[1].toLowerCase();
+                        if (this.monthNames[monthText]) {
+                            this.expectedMonth = this.monthNames[monthText];
+                        }
+                        if (match[2] && /^\d{4}$/.test(match[2])) {
+                            this.expectedYear = parseInt(match[2]);
+                        }
+                    }
+                    break;
+                }
+            }
+            
+            // Default year to current if not found
+            if (!this.expectedYear) {
+                this.expectedYear = new Date().getFullYear();
+            }
+            
+            // Build display string
+            if (this.expectedMonth) {
+                this.expectedPeriod = this.monthLabels[this.expectedMonth] + ' ' + this.expectedYear;
+            } else {
+                this.expectedPeriod = 'Unknown';
+            }
+        },
+        
+        clearFolder() {
+            this.folderName = '';
+            this.bankPdf = null;
+            this.yardiExcel = null;
+            this.expectedMonth = null;
+            this.expectedYear = null;
+            this.expectedPeriod = '';
+            this.allFiles = [];
+            this.$refs.folderInput.value = '';
+        },
+        
+        async submitFolder() {
+            if (!this.bankPdf || !this.yardiExcel) {
+                alert('Both PDF and Excel files are required.');
+                return;
+            }
+            
+            this.isSubmitting = true;
+            
+            // Create FormData and submit
+            const formData = new FormData();
+            formData.append('folder_name', this.folderName);
+            formData.append('expected_month', this.expectedMonth || '');
+            formData.append('expected_year', this.expectedYear || '');
+            formData.append('property_name', this.selectedProperty === '__new__' ? this.newPropertyName : this.selectedProperty);
+            formData.append('bank_pdf', this.bankPdf);
+            formData.append('yardi_excel', this.yardiExcel);
+            
+            try {
+                const response = await fetch('{{ url_for("upload.upload_folder") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    const text = await response.text();
+                    // If it's HTML (error page), show it
+                    document.body.innerHTML = text;
+                }
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                this.isSubmitting = false;
             }
         }
     }

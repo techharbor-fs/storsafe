@@ -21,6 +21,10 @@ class NotreDameFCUParser(BaseBankParser):
     # Account suffix we're interested in (160 = OPERATING account)
     TARGET_ACCOUNT_SUFFIX = "160"
     
+    def __init__(self):
+        super().__init__()
+        self.property_name = None
+    
     @classmethod
     def can_parse(cls, pdf_path: Path, text_content: str) -> bool:
         """Check if this is a Notre Dame FCU statement."""
@@ -28,11 +32,37 @@ class NotreDameFCUParser(BaseBankParser):
         text_normalized = text_content.replace('\xa0', ' ').upper()
         return "NOTREDAMEFCU" in text_content or "NOTRE DAME" in text_normalized
     
+    def _extract_property_name(self, pdf_path: Path, text: str) -> Optional[str]:
+        """
+        Extract property name from filename or content.
+        
+        Filename patterns:
+        - "--- SS of Madison_Notre Dame 11.30.2025.pdf" -> "Madison"
+        - "SS of Chicago Notre Dame 12.31.2025.pdf" -> "Chicago"
+        """
+        filename = pdf_path.name
+        
+        # Pattern: "SS of {Property}_" or "SS of {Property} "
+        match = re.search(r'SS\s+of\s+([A-Za-z]+)[\s_]', filename, re.IGNORECASE)
+        if match:
+            return match.group(1).title()
+        
+        # Try content - look for "SS OF MADISON" pattern in text
+        match = re.search(r'SS\s+OF\s+([A-Z]+)', text.upper())
+        if match:
+            return match.group(1).title()
+        
+        return None
+    
     def parse(self, pdf_path: Path) -> List[Transaction]:
         """Parse transactions from Notre Dame FCU statement."""
         text = self.extract_pdf_text(pdf_path)
         # Normalize non-breaking spaces to regular spaces
         text = text.replace('\xa0', ' ')
+        
+        # Extract property name
+        self.property_name = self._extract_property_name(pdf_path, text)
+        
         return self._parse_transactions(text)
     
     def _parse_transactions(self, text: str) -> List[Transaction]:

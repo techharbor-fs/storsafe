@@ -28,18 +28,40 @@ A web application for automating bank reconciliation between bank statements (PD
 ## How It Works
 
 ```
-1. Upload Files → Bank PDF + Yardi Excel
+1. Select Folder → User selects monthly folder (e.g., "12. Dec/")
                        ↓
-2. Parse → Extract transactions from both sources
+2. Validate → System checks folder name for expected month
+            → Scans for PDF + Excel files
+            → Validates file contents match expected period
                        ↓
-3. Store → Save to SQLite database
+3. Parse → Extract transactions from both sources
+         → Auto-detect property name from files
                        ↓
-4. Auto-Match → Run 7-pass matching algorithm (Phase 2)
+4. Store → Save to SQLite database
                        ↓
-5. Review → View matched/unmatched in web UI
+5. Auto-Match → Run 7-pass matching algorithm
                        ↓
-6. Manual Match → Select unmatched items to match manually (Phase 4)
+6. Review → View matched/unmatched in web UI
+                       ↓
+7. Manual Match → Select unmatched items to match manually
 ```
+
+### Folder-Based Validation
+
+The app uses folder name to determine the **expected period**:
+
+| Folder Name | Expected Period |
+|-------------|-----------------|
+| `12. Dec` | December (current year) |
+| `11. Nov` | November (current year) |
+| `December 2025` | December 2025 |
+
+**Sanity Checks:**
+- Bank PDF transaction dates must be in the expected month
+- Yardi Excel report period must match the expected month
+- Both PDF and Excel files must exist in the folder
+
+If validation fails, the app shows an error and prevents processing.
 
 ## Database Schema
 

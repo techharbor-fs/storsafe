@@ -725,23 +725,38 @@ def _save_matches_to_db(
         db: Database connection
         period_id: Reconciliation period ID
         all_matches: List of (pass_name, match_type, bank_ids, yardi_ids)
+    
+    Note:
+        PASS 7 suggestions (match_type='suggestion') are stored in the matches table
+        for display purposes, but NOT in the link tables. This ensures suggested
+        transactions remain in the "unmatched" view and can be manually matched.
     """
     for pass_name, match_type, bank_ids, yardi_ids in all_matches:
+        # For suggestions, store metadata in notes field (JSON-like) instead of link tables
+        notes = None
+        if match_type == 'suggestion':
+            # Store the suggested IDs in notes for display purposes
+            notes = f"bank_ids:{','.join(map(str, bank_ids))}|yardi_ids:{','.join(map(str, yardi_ids))}"
+        
         # Insert the match record
         cursor = db.execute("""
-            INSERT INTO matches (period_id, match_pass, match_type)
-            VALUES (?, ?, ?)
-        """, (period_id, pass_name, match_type))
+            INSERT INTO matches (period_id, match_pass, match_type, notes)
+            VALUES (?, ?, ?, ?)
+        """, (period_id, pass_name, match_type, notes))
         match_id = cursor.lastrowid
         
-        # Insert bank transaction links
+        # For suggestions, don't insert link records - leave transactions in unmatched view
+        if match_type == 'suggestion':
+            continue
+        
+        # Insert bank transaction links (only for confirmed matches)
         for bank_id in bank_ids:
             db.execute("""
                 INSERT INTO match_bank_transactions (match_id, bank_transaction_id)
                 VALUES (?, ?)
             """, (match_id, bank_id))
         
-        # Insert yardi transaction links
+        # Insert yardi transaction links (only for confirmed matches)
         for yardi_id in yardi_ids:
             db.execute("""
                 INSERT INTO match_yardi_transactions (match_id, yardi_transaction_id)

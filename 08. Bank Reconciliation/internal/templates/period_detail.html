@@ -482,12 +482,12 @@ function matchingApp() {
         // Transaction data with amounts and descriptions for filtering
         bankTransactions: [
             {% for txn in unmatched_bank %}
-            { id: {{ txn.id }}, amount: {{ txn.amount }}, desc: "{{ txn.description|default('', true)|e }}", txid: "{{ txn.transaction_id|default('', true)|e }}", date: "{{ txn.date }}" }{% if not loop.last %},{% endif %}
+            { id: {{ txn.id }}, amount: {{ txn.amount }}, desc: {{ (txn.description or '')|tojson }}, txid: {{ (txn.transaction_id or '')|tojson }}, date: {{ txn.date|tojson }} }{% if not loop.last %},{% endif %}
             {% endfor %}
         ],
         yardiTransactions: [
             {% for txn in unmatched_yardi %}
-            { id: {{ txn.id }}, amount: {{ txn.amount }}, desc: "{{ txn.description|default('', true)|e }}", txid: "{{ txn.transaction_id|default('', true)|e }}", date: "{{ txn.date }}" }{% if not loop.last %},{% endif %}
+            { id: {{ txn.id }}, amount: {{ txn.amount }}, desc: {{ (txn.description or '')|tojson }}, txid: {{ (txn.transaction_id or '')|tojson }}, date: {{ txn.date|tojson }} }{% if not loop.last %},{% endif %}
             {% endfor %}
         ],
         
