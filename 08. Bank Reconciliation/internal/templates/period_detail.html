@@ -621,7 +621,7 @@
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs text-th-gray-blue">{{ suggestion.bank_txn.date }}</span>
                                     <span class="font-mono text-sm font-semibold {% if suggestion.bank_txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
-                                        ${{ "%.2f"|format(suggestion.bank_txn.amount|abs) }}
+                                        {{ "${:,.2f}".format(suggestion.bank_txn.amount|abs) }}
                                     </span>
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-th-azure/10 text-th-azure">
                                         {{ suggestion.category_label }}
@@ -686,7 +686,7 @@
                                 </td>
                                 <td class="py-3 px-4 text-right font-mono">
                                     <span class="{% if adj.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
-                                        ${{ "%.2f"|format(adj.amount|abs) }}
+                                        {{ "${:,.2f}".format(adj.amount|abs) }}
                                     </span>
                                 </td>
                                 <td class="py-3 px-4 text-right">
@@ -705,7 +705,7 @@
                                 <td class="py-3 px-4 text-right font-mono font-semibold">
                                     {% set total = adjustments|map(attribute='amount')|sum %}
                                     <span class="{% if total < 0 %}text-th-error{% else %}text-th-success{% endif %}">
-                                        ${{ "%.2f"|format(total|abs) }}
+                                        {{ "${:,.2f}".format(total|abs) }}
                                     </span>
                                 </td>
                                 <td></td>
