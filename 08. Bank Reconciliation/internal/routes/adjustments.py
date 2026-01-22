@@ -381,8 +381,9 @@ def auto_suggest_adjustments(period_id: int):
     
     db.commit()
     
-    return jsonify({
-        "success": True,
-        "created": created,
-        "message": f"Created {created} suggested adjustments",
-    })
+    if created > 0:
+        flash(f"Added {created} suggested adjustment{'s' if created != 1 else ''}.", "success")
+    else:
+        flash("No new adjustments to suggest.", "info")
+    
+    return redirect(url_for("dashboard.period_detail", period_id=period_id))

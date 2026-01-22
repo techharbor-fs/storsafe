@@ -595,11 +595,11 @@
                     {% if adjustment_suggestions %}
                     <form action="{{ url_for('adjustments.auto_suggest_adjustments', period_id=period.id) }}" method="POST" class="inline">
                         <button type="submit" 
-                                class="bg-th-azure/10 hover:bg-th-azure/20 text-th-azure font-medium px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2">
+                                class="bg-th-success hover:bg-th-success/90 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                             </svg>
-                            Auto-Suggest ({{ adjustment_suggestions|length }})
+                            Add All Suggested ({{ adjustment_suggestions|length }})
                         </button>
                     </form>
                     {% endif %}
