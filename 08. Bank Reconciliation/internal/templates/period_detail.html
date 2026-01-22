@@ -307,11 +307,11 @@
                                 <span class="text-xs text-th-gray-blue">ID: {{ txn.transaction_id }}</span>
                                 {% endif %}
                             </div>
-                            <div class="flex justify-between items-start ml-6">
-                                <p class="text-sm text-th-dark-blue truncate max-w-[200px]" title="{{ txn.description }}">
+                            <div class="flex justify-between items-center ml-6 gap-4">
+                                <p class="text-sm text-th-dark-blue flex-1">
                                     {{ txn.description or '(No description)' }}
                                 </p>
-                                <span class="font-mono text-sm font-semibold {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
+                                <span class="font-mono text-sm font-semibold whitespace-nowrap {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
                                     {{ "${:,.2f}".format(txn.amount) }}
                                 </span>
                             </div>
@@ -359,11 +359,11 @@
                                     <span class="text-xs text-th-gray-blue">Check #{{ txn.transaction_id }}</span>
                                     {% endif %}
                                 </div>
-                                <div class="flex justify-between items-start ml-6">
-                                    <p class="text-sm text-th-dark-blue truncate max-w-[200px]" title="{{ txn.description }}">
+                                <div class="flex justify-between items-center ml-6 gap-4">
+                                    <p class="text-sm text-th-dark-blue flex-1">
                                         {{ txn.description or '(No description)' }}
                                     </p>
-                                    <span class="font-mono text-sm font-semibold {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
+                                    <span class="font-mono text-sm font-semibold whitespace-nowrap {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
                                         {{ "${:,.2f}".format(txn.amount) }}
                                     </span>
                                 </div>
@@ -409,11 +409,11 @@
                                     </div>
                                     <span class="text-xs text-th-gray-blue">{{ txn.date }}</span>
                                 </div>
-                                <div class="flex justify-between items-start ml-6">
-                                    <p class="text-sm text-th-dark-blue truncate max-w-[200px]" title="{{ txn.description }}">
+                                <div class="flex justify-between items-center ml-6 gap-4">
+                                    <p class="text-sm text-th-dark-blue flex-1">
                                         {{ txn.description or '(No description)' }}
                                     </p>
-                                    <span class="font-mono text-sm font-semibold {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
+                                    <span class="font-mono text-sm font-semibold whitespace-nowrap {% if txn.amount < 0 %}text-th-error{% else %}text-th-success{% endif %}">
                                         {{ "${:,.2f}".format(txn.amount) }}
                                     </span>
                                 </div>
@@ -484,7 +484,7 @@
                                 <div {% if not loop.first %}class="mt-2 pt-2 border-t border-th-gray-blue/10"{% endif %}>
                                     <div class="text-xs text-th-gray-blue">{{ txn.date }}</div>
                                     {% if txn.txid %}<div class="text-xs text-th-gray-blue">{{ txn.txid }}</div>{% endif %}
-                                    <div class="text-th-dark-blue truncate max-w-[200px]" title="{{ txn.desc }}">
+                                    <div class="text-th-dark-blue">
                                         {{ txn.desc or '(No description)' }}
                                     </div>
                                 </div>
@@ -494,13 +494,13 @@
                                 {% if match.adjustment %}
                                 <div class="mt-2 pt-2 border-t border-pink-300/50">
                                     <div class="text-xs text-pink-600">Adjustment Entry</div>
-                                    <div class="text-pink-600 truncate max-w-[200px]">
+                                    <div class="text-pink-600">
                                         Match differential
                                     </div>
                                 </div>
                                 {% endif %}
                             </td>
-                            <td class="py-3 px-4 text-right font-mono align-top">
+                            <td class="py-3 px-4 text-right font-mono align-middle">
                                 {% if match.bank_txns %}
                                 {% for txn in match.bank_txns %}
                                 <div {% if not loop.first %}class="mt-2 pt-2 border-t border-th-gray-blue/10"{% endif %}>
@@ -529,14 +529,14 @@
                                 <div {% if not loop.first %}class="mt-2 pt-2 border-t border-th-gray-blue/10"{% endif %}>
                                     <div class="text-xs text-th-gray-blue">{{ txn.date }}</div>
                                     {% if txn.txid %}<div class="text-xs text-th-gray-blue">{{ txn.txid }}</div>{% endif %}
-                                    <div class="text-th-dark-blue truncate max-w-[200px]" title="{{ txn.desc }}">
+                                    <div class="text-th-dark-blue">
                                         {{ txn.desc or '(No description)' }}
                                     </div>
                                 </div>
                                 {% endfor %}
                                 {% else %}<span class="text-th-gray-blue">-</span>{% endif %}
                             </td>
-                            <td class="py-3 px-4 text-right font-mono align-top">
+                            <td class="py-3 px-4 text-right font-mono align-middle">
                                 {% if match.yardi_txns %}
                                 {% for txn in match.yardi_txns %}
                                 <div {% if not loop.first %}class="mt-2 pt-2 border-t border-th-gray-blue/10"{% endif %}>
