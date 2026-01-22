@@ -14,6 +14,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from werkzeug.utils import secure_filename
 
 from ..database import get_db
+from ..property_mapping import get_property_name
 
 bp = Blueprint("upload", __name__, url_prefix="/upload")
 
@@ -257,8 +258,9 @@ def upload_folder():
             
             return redirect(url_for("upload.index"))
         
-        # Determine property name
-        property_name = property_override or detected_property or "Unknown Property"
+        # Determine property name (apply mapping to convert codes to display names)
+        raw_property = property_override or detected_property or "Unknown Property"
+        property_name = get_property_name(raw_property)
         
         # Get or create property
         property_row = db.execute(
