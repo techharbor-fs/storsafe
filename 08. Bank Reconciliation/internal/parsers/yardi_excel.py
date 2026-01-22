@@ -452,14 +452,27 @@ def _extract_period(ws, header_blob: str, excel_path: Path) -> Tuple[Optional[in
         year = int(m.group(3))
         return year, month
     
-    # Pattern 4: Look for any date in header that looks like end-of-month
+    # Pattern 4: Look for dates in header that look like period-end dates
+    # First pass: find dates at midnight (likely period dates, not timestamps)
+    period_date = None
     for r in ws.iter_rows(min_row=1, max_row=10, values_only=True):
         for v in r:
-            if isinstance(v, (datetime, date)):
-                # Assume this date represents the period
-                year = v.year
-                month = v.month
-                return year, month
+            if isinstance(v, datetime):
+                # Prefer dates at midnight (00:00:00) - these are period dates
+                # Skip dates with specific times (like 20:51:40) - these are generation timestamps
+                if v.hour == 0 and v.minute == 0 and v.second == 0:
+                    period_date = v
+                    break
+            elif isinstance(v, date) and not isinstance(v, datetime):
+                period_date = v
+                break
+        if period_date:
+            break
+    
+    if period_date:
+        year = period_date.year
+        month = period_date.month
+        return year, month
     
     # Pattern 5: Check parent folder name (e.g., "12. Dec")
     parent_folder = excel_path.parent.name
