@@ -187,9 +187,9 @@
     
     <!-- Hidden form for actual submission -->
     <form x-ref="uploadForm" action="{{ url_for('upload.upload_folder') }}" method="POST" enctype="multipart/form-data" class="hidden">
-        <input type="hidden" name="folder_name" x-model="folderName">
-        <input type="hidden" name="expected_month" x-model="expectedMonth">
-        <input type="hidden" name="expected_year" x-model="expectedYear">
+        <input type="hidden" name="folder_name" :value="folderName">
+        <input type="hidden" name="expected_month" :value="expectedMonth || ''">
+        <input type="hidden" name="expected_year" :value="expectedYear || ''">
         <input type="hidden" name="property_name" :value="selectedProperty === '__new__' ? newPropertyName : selectedProperty">
         <input type="file" name="bank_pdf" x-ref="bankPdfInput">
         <input type="file" name="yardi_excel" x-ref="yardiExcelInput">
@@ -316,7 +316,7 @@ function folderUpload() {
             this.$refs.folderInput.value = '';
         },
         
-        async submitFolder() {
+        submitFolder() {
             if (!this.bankPdf || !this.yardiExcel) {
                 alert('Both PDF and Excel files are required.');
                 return;
@@ -324,32 +324,30 @@ function folderUpload() {
             
             this.isSubmitting = true;
             
-            // Create FormData and submit
-            const formData = new FormData();
-            formData.append('folder_name', this.folderName);
-            formData.append('expected_month', this.expectedMonth || '');
-            formData.append('expected_year', this.expectedYear || '');
-            formData.append('property_name', this.selectedProperty === '__new__' ? this.newPropertyName : this.selectedProperty);
-            formData.append('bank_pdf', this.bankPdf);
-            formData.append('yardi_excel', this.yardiExcel);
+            // Use the hidden form for proper form submission
+            // This ensures Flask flash messages work correctly
+            const form = this.$refs.uploadForm;
             
-            try {
-                const response = await fetch('{{ url_for("upload.upload_folder") }}', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.redirected) {
-                    window.location.href = response.url;
-                } else {
-                    const text = await response.text();
-                    // If it's HTML (error page), show it
-                    document.body.innerHTML = text;
-                }
-            } catch (error) {
-                alert('Upload failed: ' + error.message);
-                this.isSubmitting = false;
-            }
+            // Create a new FormData from the form
+            const formData = new FormData(form);
+            
+            // Update the file inputs with our detected files
+            // We need to use DataTransfer to set File objects on file inputs
+            const bankInput = this.$refs.bankPdfInput;
+            const yardiInput = this.$refs.yardiExcelInput;
+            
+            // Create DataTransfer objects to set files
+            const bankDT = new DataTransfer();
+            bankDT.items.add(this.bankPdf);
+            bankInput.files = bankDT.files;
+            
+            const yardiDT = new DataTransfer();
+            yardiDT.items.add(this.yardiExcel);
+            yardiInput.files = yardiDT.files;
+            
+            // Submit the form normally (not via fetch)
+            // This preserves Flask flash messages
+            form.submit();
         }
     }
 }

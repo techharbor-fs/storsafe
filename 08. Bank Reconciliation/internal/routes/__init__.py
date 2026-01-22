@@ -1,2 +1,2 @@
 # Routes package
-from . import dashboard, upload
+from . import dashboard, upload, adjustments

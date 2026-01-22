@@ -37,9 +37,10 @@ def create_app(config_name: str = None) -> Flask:
     db.init_app(app)
     
     # Register blueprints
-    from .routes import dashboard, upload
+    from .routes import dashboard, upload, adjustments
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(upload.bp)
+    app.register_blueprint(adjustments.bp)
     
     # Root redirect
     @app.route("/")

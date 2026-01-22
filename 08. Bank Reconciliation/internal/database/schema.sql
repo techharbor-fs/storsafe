@@ -71,6 +71,54 @@ CREATE TABLE IF NOT EXISTS match_yardi_transactions (
     PRIMARY KEY (match_id, yardi_transaction_id)
 );
 
+-- Adjustment entries (reconciling items to be recorded in Yardi)
+-- These represent the difference between bank balance and book balance
+CREATE TABLE IF NOT EXISTS adjustment_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    period_id INTEGER NOT NULL REFERENCES reconciliation_periods(id) ON DELETE CASCADE,
+    source_type TEXT NOT NULL,  -- 'bank' (from unmatched bank txn) or 'differential' (from unequal match)
+    source_bank_txn_id INTEGER REFERENCES bank_transactions(id) ON DELETE SET NULL,
+    source_match_id INTEGER REFERENCES matches(id) ON DELETE SET NULL,
+    date DATE NOT NULL,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    category TEXT,  -- 'nsf_fee', 'bank_charge', 'interest', 'other', etc.
+    suggested BOOLEAN DEFAULT FALSE,  -- TRUE if auto-suggested
+    confirmed BOOLEAN DEFAULT FALSE,  -- TRUE if user confirmed as adjustment
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Adjustment patterns (learned from previous months)
+-- Used for smart suggestions
+CREATE TABLE IF NOT EXISTS adjustment_patterns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    property_id INTEGER REFERENCES properties(id) ON DELETE CASCADE,
+    pattern_type TEXT NOT NULL,  -- 'keyword', 'amount_range', 'transaction_type'
+    pattern_value TEXT NOT NULL,  -- The keyword, range, or type to match
+    category TEXT NOT NULL,  -- The suggested category
+    confidence REAL DEFAULT 1.0,  -- 0.0 to 1.0, higher = more confident
+    times_used INTEGER DEFAULT 0,  -- How many times this pattern was confirmed
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(property_id, pattern_type, pattern_value)
+);
+
+-- Seed common adjustment patterns
+INSERT OR IGNORE INTO adjustment_patterns (property_id, pattern_type, pattern_value, category, confidence) VALUES
+    (NULL, 'keyword', 'nsf', 'nsf_fee', 1.0),
+    (NULL, 'keyword', 'nsf fee', 'nsf_fee', 1.0),
+    (NULL, 'keyword', 'returned item', 'nsf_fee', 0.9),
+    (NULL, 'keyword', 'overdraft', 'overdraft_fee', 1.0),
+    (NULL, 'keyword', 'od fee', 'overdraft_fee', 0.9),
+    (NULL, 'keyword', 'service charge', 'bank_charge', 0.9),
+    (NULL, 'keyword', 'monthly fee', 'bank_charge', 0.9),
+    (NULL, 'keyword', 'maintenance fee', 'bank_charge', 0.9),
+    (NULL, 'keyword', 'analysis charge', 'bank_charge', 0.8),
+    (NULL, 'keyword', 'wire fee', 'bank_charge', 0.9),
+    (NULL, 'keyword', 'interest', 'interest_income', 0.8),
+    (NULL, 'keyword', 'interest earned', 'interest_income', 0.9),
+    (NULL, 'keyword', 'interest paid', 'interest_income', 0.9);
+
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_bank_transactions_period ON bank_transactions(period_id);
 CREATE INDEX IF NOT EXISTS idx_bank_transactions_date ON bank_transactions(date);
@@ -83,3 +131,6 @@ CREATE INDEX IF NOT EXISTS idx_yardi_transactions_amount ON yardi_transactions(a
 CREATE INDEX IF NOT EXISTS idx_matches_period ON matches(period_id);
 CREATE INDEX IF NOT EXISTS idx_match_bank_transactions_match ON match_bank_transactions(match_id);
 CREATE INDEX IF NOT EXISTS idx_match_yardi_transactions_match ON match_yardi_transactions(match_id);
+
+CREATE INDEX IF NOT EXISTS idx_adjustment_entries_period ON adjustment_entries(period_id);
+CREATE INDEX IF NOT EXISTS idx_adjustment_patterns_property ON adjustment_patterns(property_id);

@@ -145,9 +145,55 @@ def period_detail(period_id: int):
                     "amount": row["yardi_amount"],
                 })
     
+    # Calculate totals and check for associated adjustments
+    for match_id, match in matches_grouped.items():
+        # Calculate totals
+        match["bank_total"] = sum(t["amount"] or 0 for t in match["bank_txns"])
+        match["yardi_total"] = sum(t["amount"] or 0 for t in match["yardi_txns"])
+        match["difference"] = round(match["bank_total"] - match["yardi_total"], 2)
+        
+        # Check if there's an associated differential adjustment
+        adj = db.execute("""
+            SELECT id, amount, category, confirmed 
+            FROM adjustment_entries 
+            WHERE source_match_id = ?
+        """, (match_id,)).fetchone()
+        
+        if adj:
+            match["adjustment"] = {
+                "id": adj["id"],
+                "amount": adj["amount"],
+                "category": adj["category"],
+                "confirmed": adj["confirmed"],
+            }
+        else:
+            match["adjustment"] = None
+    
     matches_list = list(matches_grouped.values())
     
-    # Get unmatched bank transactions
+    # Sort matches: MANUAL first, then by pass order (PASS 1, PASS 2, etc.)
+    def get_match_sort_key(match):
+        # Primary: match pass (MANUAL = 0 to appear first, then PASS 1, 2, 3...)
+        pass_str = match.get("match_pass", "PASS 99") or "PASS 99"
+        try:
+            # Handle formats like "PASS 1", "PASS 2", "MANUAL", etc.
+            if pass_str == "MANUAL":
+                pass_num = 0  # Manual matches appear FIRST
+            elif pass_str.startswith("PASS"):
+                pass_num = int(pass_str.replace("PASS", "").strip())
+            else:
+                pass_num = 99
+        except ValueError:
+            pass_num = 99
+        
+        # Secondary: match_id (creation order within each pass)
+        match_id = match.get("match_id", 0) or 0
+        
+        return (pass_num, match_id)
+    
+    matches_list.sort(key=get_match_sort_key)
+    
+    # Get unmatched bank transactions (exclude matched AND adjustment items)
     unmatched_bank_txns = db.execute("""
         SELECT bt.*
         FROM bank_transactions bt
@@ -156,20 +202,41 @@ def period_detail(period_id: int):
             SELECT 1 FROM match_bank_transactions mbt
             WHERE mbt.bank_transaction_id = bt.id
         )
-        ORDER BY bt.date, bt.id
+        AND NOT EXISTS (
+            SELECT 1 FROM adjustment_entries ae
+            WHERE ae.source_bank_txn_id = bt.id
+        )
+        ORDER BY bt.date ASC, bt.id ASC
     """, (period_id,)).fetchall()
     
-    # Get unmatched yardi transactions
-    unmatched_yardi_txns = db.execute("""
+    # Get unmatched yardi checks (Outstanding Checks - sorted ascending)
+    unmatched_yardi_checks = db.execute("""
         SELECT yt.*
         FROM yardi_transactions yt
         WHERE yt.period_id = ?
+        AND yt.source_type = 'check'
         AND NOT EXISTS (
             SELECT 1 FROM match_yardi_transactions myt
             WHERE myt.yardi_transaction_id = yt.id
         )
-        ORDER BY yt.date, yt.id
+        ORDER BY yt.date ASC, yt.id ASC
     """, (period_id,)).fetchall()
+    
+    # Get unmatched yardi other items (Other Items - sorted ascending)
+    unmatched_yardi_other = db.execute("""
+        SELECT yt.*
+        FROM yardi_transactions yt
+        WHERE yt.period_id = ?
+        AND (yt.source_type = 'other' OR yt.source_type IS NULL)
+        AND NOT EXISTS (
+            SELECT 1 FROM match_yardi_transactions myt
+            WHERE myt.yardi_transaction_id = yt.id
+        )
+        ORDER BY yt.date ASC, yt.id ASC
+    """, (period_id,)).fetchall()
+    
+    # Combine for backward compatibility (template may still use unmatched_yardi)
+    unmatched_yardi_txns = list(unmatched_yardi_checks) + list(unmatched_yardi_other)
     
     # Get PASS 7 suggestions
     suggestions = db.execute("""
@@ -180,6 +247,11 @@ def period_detail(period_id: int):
         WHERE m.period_id = ? AND m.match_type = 'suggestion'
     """, (period_id,)).fetchall()
     
+    # Get adjustments and adjustment suggestions
+    from .adjustments import get_adjustments_for_period, get_suggested_adjustments, CATEGORY_LABELS
+    adjustments = get_adjustments_for_period(period_id)
+    adjustment_suggestions = get_suggested_adjustments(period_id)
+    
     return render_template(
         "period_detail.html",
         period=period,
@@ -187,6 +259,11 @@ def period_detail(period_id: int):
         matches=matches_list,
         unmatched_bank=unmatched_bank_txns,
         unmatched_yardi=unmatched_yardi_txns,
+        unmatched_yardi_checks=unmatched_yardi_checks,
+        adjustments=adjustments,
+        adjustment_suggestions=adjustment_suggestions,
+        category_labels=CATEGORY_LABELS,
+        unmatched_yardi_other=unmatched_yardi_other,
         suggestions=suggestions,
     )
 
@@ -274,6 +351,21 @@ def create_match(period_id: int):
         if existing:
             return jsonify({"success": False, "error": f"Yardi transaction {yardi_id} is already matched"}), 400
     
+    # Calculate totals for differential check
+    bank_total = 0
+    for bank_id in bank_ids:
+        txn = db.execute("SELECT amount FROM bank_transactions WHERE id = ?", (bank_id,)).fetchone()
+        if txn:
+            bank_total += txn["amount"]
+    
+    yardi_total = 0
+    for yardi_id in yardi_ids:
+        txn = db.execute("SELECT amount FROM yardi_transactions WHERE id = ?", (yardi_id,)).fetchone()
+        if txn:
+            yardi_total += txn["amount"]
+    
+    difference = round(bank_total - yardi_total, 2)
+    
     # Create the match
     cursor = db.execute("""
         INSERT INTO matches (period_id, match_pass, match_type, notes)
@@ -297,10 +389,31 @@ def create_match(period_id: int):
     
     db.commit()
     
+    # AUTOMATICALLY create differential adjustment if amounts don't match
+    adjustment_id = None
+    if abs(difference) >= 0.01:
+        cursor = db.execute("""
+            INSERT INTO adjustment_entries 
+            (period_id, source_type, source_match_id, date, description, amount, category, confirmed, notes)
+            VALUES (?, 'differential', ?, DATE('now'), ?, ?, 'other', TRUE, ?)
+        """, (
+            period_id,
+            match_id,
+            f"Differential from manual match (Bank: ${bank_total:,.2f}, Yardi: ${yardi_total:,.2f})",
+            difference,
+            "Auto-created from unequal match",
+        ))
+        adjustment_id = cursor.lastrowid
+        db.commit()
+    
     return jsonify({
         "success": True,
         "match_id": match_id,
-        "message": f"Matched {len(bank_ids)} bank + {len(yardi_ids)} yardi transactions"
+        "message": f"Matched {len(bank_ids)} bank + {len(yardi_ids)} yardi transactions",
+        "bank_total": bank_total,
+        "yardi_total": yardi_total,
+        "difference": difference,
+        "adjustment_id": adjustment_id,
     })
 
 
