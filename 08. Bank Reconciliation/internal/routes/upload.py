@@ -32,8 +32,8 @@ def parse_folder_month(folder_name: str) -> Tuple[Optional[int], Optional[int]]:
     Parse expected month and year from folder name.
     
     Patterns supported:
+    - "12. Dec 2025" -> (12, 2025)
     - "12. Dec" -> (12, current_year)
-    - "11. Nov" -> (11, current_year)
     - "December 2025" -> (12, 2025)
     
     Returns:
@@ -54,21 +54,27 @@ def parse_folder_month(folder_name: str) -> Tuple[Optional[int], Optional[int]]:
     month = None
     year = datetime.now().year
     
-    # Pattern: "12. Dec" or "11. Nov"
+    # First, try to extract year from anywhere in the folder name
+    year_match = re.search(r'(\d{4})', folder_name)
+    if year_match:
+        potential_year = int(year_match.group(1))
+        if 2020 <= potential_year <= 2030:
+            year = potential_year
+    
+    # Pattern: "12. Dec" or "12. Dec 2025"
     match = re.search(r'(\d{1,2})\.\s*([a-zA-Z]+)', folder_name)
     if match:
         month_text = match.group(2).lower()
         if month_text in month_names:
             month = month_names[month_text]
     
-    # Pattern: "December 2025"
+    # Pattern: "December 2025" (if month not found yet)
     if not month:
-        match = re.search(r'([a-zA-Z]+)\s*(\d{4})', folder_name)
+        match = re.search(r'([a-zA-Z]+)\s*\d*', folder_name)
         if match:
             month_text = match.group(1).lower()
             if month_text in month_names:
                 month = month_names[month_text]
-                year = int(match.group(2))
     
     return month, year
 
