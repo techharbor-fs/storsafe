@@ -902,7 +902,8 @@ function matchingApp() {
         },
         
         // Add bank transaction as adjustment
-        async addAdjustment(bankTxnId, category) {
+        // shouldReload: if true, reloads page after success (default true for single calls)
+        async addAdjustment(bankTxnId, category, shouldReload = true) {
             try {
                 const response = await fetch('{{ url_for("adjustments.create_adjustment", period_id=period.id) }}', {
                     method: 'POST',
@@ -918,13 +919,18 @@ function matchingApp() {
                 const data = await response.json();
                 
                 if (data.success) {
-                    window.location.reload();
+                    if (shouldReload) {
+                        window.location.reload();
+                    }
+                    return true;
                 } else {
                     alert('Error creating adjustment: ' + (data.error || 'Unknown error'));
+                    return false;
                 }
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error creating adjustment. Please try again.');
+                return false;
             }
         },
         
@@ -960,8 +966,16 @@ function matchingApp() {
                 return;
             }
             
+            // Process all selected transactions without reloading
+            let successCount = 0;
             for (const bankId of this.selectedBank) {
-                await this.addAdjustment(bankId, 'other');
+                const success = await this.addAdjustment(bankId, 'other', false);
+                if (success) successCount++;
+            }
+            
+            // Reload page once after all are processed
+            if (successCount > 0) {
+                window.location.reload();
             }
         }
     }
