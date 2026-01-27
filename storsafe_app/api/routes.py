@@ -5,7 +5,12 @@ API Routes for Storsafe Dashboard.
 from flask import jsonify, request
 
 from . import api_bp
-from ..db import get_db_service
+
+# Handle dual import modes: package (local dev) vs standalone (Railway)
+try:
+    from ..db import get_db_service
+except ImportError:
+    from db import get_db_service
 
 
 @api_bp.route("/db/init", methods=["POST"])
