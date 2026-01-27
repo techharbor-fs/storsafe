@@ -15,7 +15,11 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
-from ..config import Config
+# Handle dual import modes: package (local dev) vs standalone (Railway)
+try:
+    from ..config import Config
+except ImportError:
+    from config import Config
 
 logger = logging.getLogger(__name__)
 
