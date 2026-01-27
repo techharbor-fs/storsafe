@@ -1,21 +1,26 @@
 """
 WSGI entry point for Railway deployment.
 
-This file handles the import path setup so the app can be run
-either as a module or directly via gunicorn/python.
+When deployed to Railway with storsafe_app as root directory,
+this file is at /app/wsgi.py and imports are local (not package-based).
 """
 
 import os
 import sys
 
-# Ensure the parent directory is in the path
-# This allows imports like `from storsafe_app.config import config`
-parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+# Determine if we're running as a package (local dev) or standalone (Railway)
+# On Railway: /app/wsgi.py with files like /app/app.py, /app/config.py
+# Locally: running from parent folder as storsafe_app.wsgi
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Now we can import using absolute paths
-from storsafe_app.app import create_app
+# Try package import first (local development), fall back to local import (Railway)
+try:
+    from storsafe_app.app import create_app
+except ImportError:
+    # Running on Railway - add current dir to path for local imports
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+    from app import create_app
 
 # Create the app instance for gunicorn
 app = create_app()
